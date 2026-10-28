@@ -1,0 +1,121 @@
+rewrite = ["RightShift"]   # rewrite / translate / chat about the selection
+chat = []                  # open the panel straight in chat
+quick = []                 # the first [[actions]] button on the selection, no panel
+translate = []             # translate the selection in place, no panel (a web page: the panel shows it)
+undo = []                  # take back the last replace; the original goes on the clipboard
+double_tap_ms = 450        # max time between the two taps
+
+[dictation]
+# "fp32" (2.6 GB download) is the most accurate;
+# "int8" (670 MB) is smaller and makes more mistakes.
+model = "fp32"
+auto_copy = false          # also put every dictation on the clipboard
+history_max = 10           # recent results kept of each: dictations; rewrites, translations, write-outs
+silence_rms = 0.01         # a 50 ms block below this RMS counts as silence
+# Hard cap on one segment. Every tick re-decodes the whole segment, so lower
+# this to 10 if live text lags behind your voice.
+segment_max_s = 15.0
+# A prompt every dictation is rewritten with when it ends ({text} marks where
+# the dictation goes, else it is added at the end): batch types the result
+# instead, live replaces what it typed.
+# Uses the picked model; "" = off.
+rewrite = ""
+# After a rewrite, the dictation shows in a small box by the text: Revert puts
+# it back; any key or a click elsewhere keeps the rewrite (macOS).
+revert = true
+# The rewrite replaces the dictation; false: the dictation stays and the box
+# offers the rewrite to take. The box switches this too (macOS).
+rewrite_replaces = true
+# Also rewrite a dictation into Blitznir's own text field.
+rewrite_in_panel = false
+
+[vocabulary]
+# Spoken → written, applied to every transcript before it is typed (whole
+# words, case-insensitive). The written forms are also given to the clean-up
+# and instruction prompts so the model keeps their spelling.
+# Example: replace = { "o m l x" = "oMLX", "blitz near" = "Blitznir" }
+replace = {}
+# Extra terms to keep as written (names, products) when nothing is replaced.
+# Example: terms = ["PostgreSQL"]
+terms = []
+
+[translate]
+# Translate: text in `home` becomes `other`; anything else becomes `home`.
+home = "German"
+other = "English"
+
+[llm]
+# Let the model reason before a chat answer: only reasoning answered an
+# open-ended question completely, but a simple one took 8.7 s instead of 0.6 s.
+# Rewriting never reasons: it measurably hurts a spec-following edit.
+chat_reasoning = false
+# Models whose id matches this regex (case-insensitive) are not offered:
+# drafters, embedders, speech models, and `name@?` (LM Studio's MTP drafter).
+hide_models = '''(^|[-_/@])(mtp|draft|drafter|dflash\d*)([-_/@.]|$)|assistant$|(tts|asr|whisper|parakeet|embed)|@\?$'''
+# The picker's eye (accepts images): what the server says where it offers
+# /api/v0/models (LM Studio does), else a model id matching this regex
+# (case-insensitive); `vision = true|false` in an endpoint overrides both.
+vision_models = '''(vl|vision|llava|pixtral|minicpm-v|moondream|smolvlm|idefics|gemma-[34]|multimodal|omni)'''
+
+# OpenAI-compatible servers, as many as you like. url ends in /v1;
+# key = "" sends none; models = [] asks the server for its list;
+# vision = true or false says whether all its models accept images.
+[[endpoints]]
+name = "LM Studio"
+url = "http://127.0.0.1:1234/v1"
+key = ""
+models = []
+
+[[endpoints]]
+name = "Ollama"
+url = "http://127.0.0.1:11434/v1"
+key = ""
+models = []
+
+[[endpoints]]
+name = "oMLX"
+url = "http://127.0.0.1:8000/v1"
+key = ""                   # oMLX wants its API key here
+models = []
+
+[prompts]
+# The system message a chat about a selection starts with, as sent; edit it
+# freely. {text} is the selection; chat = "" brings the built-in one back.
+chat = '''
+You are a helpful assistant. The user is working on the text shown below. Answer their questions about it — explain, clarify, shorten, reword, translate, debug, or discuss it as they ask. Keep answers concise and in the same language as the user's message. Do not re-emit the whole text unless explicitly asked.
+
+TEXT:
+{text}'''
+
+# The buttons left of Chat, in order, up to 6: add a table for another one.
+# Each has one prompt: {text} is the selection, {instruction} what you typed
+# in the field (a prompt without it gets what you typed appended).
+# enter = true on the button Return runs (none = Return starts a chat);
+# chat_enter = true on the one Return runs in a chat (none = Return sends).
+# hotkey = ["F14"] runs that button on the selection, no panel, as [hotkeys] quick.
+[[actions]]
+label = "Rewrite"
+enter = true
+prompt = '''
+The text below was dictated: raw speech-to-text output. It may carry dictation artifacts: filler words (uh, um, äh, hmm), false starts, stuttered or duplicated words, and words the recognizer misheard so they do not fit the sentence. The instruction was dictated too: read it for intent, and never treat it as part of the text.
+
+If there is an instruction, follow it fully, however big the change (shorten, expand, make it more formal, turn it into bullet points, translate, restructure), keep the author's language unless it asks otherwise, and silently remove the dictation artifacts from the result.
+
+If the instruction is empty, only clean the text up so it reads as text the author could send:
+- Remove fillers, stutters, false starts and accidental repetitions.
+- Replace a misrecognized word only when the intended word is unambiguous from the sentence around it. If you are not sure, leave the word exactly as it is — guessing a plausible-sounding replacement is worse than leaving it.
+- Fix punctuation, capitalization and obvious grammar slips.
+- Keep the author's own wording, tone, structure and language (English stays English, German stays German). Do NOT rephrase, reorder, summarize, expand, translate or add anything of your own.
+- The result must be about as long as the input, minus the removed artifacts.
+
+Do not add commentary, notes, headings or options. Output ONLY the resulting text — no preamble, no quotes, no explanation.
+
+INSTRUCTION:
+{instruction}
+
+TEXT:
+{text}'''
+
+[capture]
+# The chat's screenshot: a command that lets you pick a region and writes
+# it to {path}.

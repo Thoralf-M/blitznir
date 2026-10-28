@@ -1,0 +1,62 @@
+[package]
+name = "blitznir"
+description = "Blitznir: the tray daemon and the panel, Skia for every window (Freya), no webview."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lib]
+name = "blitznir_app"
+
+[[bin]]
+name = "blitznir"
+path = "src/main.rs"
+
+# the panel's UI headless; its own main: the panel's LaunchProxy needs an
+# event loop, which macOS makes only on the main thread
+[[test]]
+name = "ui"
+harness = false
+
+[dependencies]
+# threads → the panel's component; already in Freya's tree
+async-channel = "2"
+blitznir-core.workspace = true
+blitznir-shared.workspace = true
+# the autostart entry's directory; already in core's tree
+dirs = "6"
+# pinned: every rc moves APIs (read the tag's website/public/llms.txt and
+# the tag's examples, never write Freya from memory); `tray` = tray-icon + muda,
+# `code-editor` = the Settings tab's editor, `engine` = Skia's paints and
+# paths for the lightning canvas; answers are core's markdown blocks as
+# SelectableText (ui/answer.rs), not freya's MarkdownViewer: that selects nothing
+freya = { version = "=0.5.0-rc.13", features = ["tray", "code-editor", "engine"] }
+# the tray's template icon; pasted and captured images downscaled to 1280 px;
+# already in Freya's tree
+image = { version = "0.25", default-features = false, features = ["png"] }
+log.workspace = true
+# the lightning's thunder and rain, rendered per strike (panel/sound.rs)
+thunder-synth.workspace = true
+# the runtime reqwest's futures run on: core leaves it to the app; already in
+# the tree
+tokio = { version = "1", features = ["rt-multi-thread"] }
+# config.toml's grammar for the Settings editor's highlighting (freya-code-editor
+# brings tree-sitter but no grammar)
+tree-sitter-toml-ng = "0.7"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# PRIMARY and CLIPBOARD on winit's Wayland connection (wayland.rs), the
+# copypasta 0.10 Freya's clipboard already uses; its Primary half is ours
+copypasta = "0.10"
+# the gtk 0.18 of Freya's tray thread: glib::idle_add_once reaches it
+gtk = "0.18"
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+# headless rendering and input for tests/ui.rs, the same version as freya
+freya-testing = "=0.5.0-rc.13"

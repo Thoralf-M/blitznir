@@ -1,0 +1,27 @@
+[workspace]
+members = ["crates/core", "crates/shared", "crates/app"]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+# the highest of the dependencies' (tree-sitter-language); clippy's
+# incompatible_msrv holds our own std use to it
+rust-version = "1.90"
+license = "Apache-2.0"
+repository = "https://github.com/Thoralf-M/blitznir"
+publish = false
+
+[workspace.dependencies]
+blitznir-core = { path = "crates/core" }
+blitznir-shared = { path = "crates/shared" }
+# the lightning's thunder and rain, synthesised (our own crate, on crates.io)
+thunder-synth = "=0.1.0"
+log = "0.4"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+
+[workspace.lints.clippy]
+too_many_lines = "deny"
+unwrap_used = "deny"
+print_stdout = "deny"
+dbg_macro = "deny"

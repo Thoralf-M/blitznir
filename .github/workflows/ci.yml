@@ -1,0 +1,39 @@
+# scripts/check.sh on both OSes: a Platform method implemented for one OS
+# only fails here. The first build downloads the ONNX Runtime (network).
+name: ci
+on: [push, pull_request]
+# it only reads the code: no token that can write
+permissions:
+  contents: read
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      # the packages of docker/Dockerfile.linux, bar lld (a runner has the memory)
+      - name: Linux packages
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential pkg-config \
+            libssl-dev libgtk-3-dev libxdo-dev \
+            libayatana-appindicator3-dev libasound2-dev libxkbcommon-dev xkb-data
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/ort.pyke.io
+            ~/Library/Caches/ort.pyke.io
+            target
+          key: ${{ matrix.os }}-cargo-${{ hashFiles('Cargo.lock') }}
+          restore-keys: ${{ matrix.os }}-cargo-
+      - run: scripts/check.sh

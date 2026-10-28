@@ -1,0 +1,75 @@
+[package]
+name = "blitznir-shared"
+description = "The app's non-UI half: the OS behind core's seams, audio, the speech model, the dictation session, the log, the CLI."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+# Named `blitznir` so the app writes `blitznir::…` and the log targets stay
+# `blitznir::stt` etc. No UI toolkit here: scripts/check.sh fails if freya
+# enters this tree.
+[lib]
+name = "blitznir"
+
+[dependencies]
+blitznir-core.workspace = true
+# the microphone: CoreAudio on macOS, ALSA (PipeWire's ALSA plugin) on Linux
+cpal = "0.18"
+# already a dependency of parakeet-rs; reads the WAV for `blitznir transcribe`
+hound = "3.5"
+log.workspace = true
+# pinned: this exact version was measured (ParakeetTDT, TimestampMode::Tokens)
+parakeet-rs = "=0.3.8"
+reqwest = { workspace = true, features = ["blocking"] }
+# device rate → 16 kHz when the microphone cannot run at 16 kHz itself
+rubato = "5"
+
+# The minimum feature lists that compile and run (`libc` on app-kit is
+# required for processIdentifier).
+[target.'cfg(target_os = "macos")'.dependencies]
+# run_on_main for the paste-back activation hand-off (either shell's main
+# thread runs the main dispatch queue)
+dispatch2 = "0.3"
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", default-features = false, features = [
+    "std", "libc", "NSPasteboard", "NSWorkspace", "NSRunningApplication", "NSApplication", "NSResponder",
+    "NSBitmapImageRep", "NSImageRep",
+] }
+objc2-application-services = { version = "0.3", default-features = false, features = [
+    "std", "HIServices", "AXUIElement", "AXError", "AXValue", "libc",
+] }
+objc2-core-foundation = { version = "0.3", default-features = false, features = [
+    "std", "CFRunLoop", "CFMachPort", "CFString", "CFNumber", "CFCGTypes", "CFDictionary", "CFArray",
+] }
+objc2-core-graphics = { version = "0.3", default-features = false, features = [
+    "std", "CGEvent", "CGEventTypes", "CGEventSource", "CGRemoteOperation", "CGWindow",
+] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSData", "NSDictionary", "NSUserDefaults"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# X11 CLIPBOARD (XWayland on GNOME): the only candidate for setting the
+# clipboard without focus, which Mutter refuses to Wayland clients;
+# `image-data` reads an image there when GTK has no focus (the Freya shell)
+arboard = { version = "3.6", default-features = false, features = ["image-data"] }
+# hotkeys from /dev/input and the uinput keyboard (uinput is always built)
+evdev = "0.13"
+# PRIMARY and CLIPBOARD on the GTK main thread, D-Bus via gio; the gtk 0.18
+# Freya's tray thread already runs
+gtk = "0.18"
+# arboard's image as the PNG the panel takes; already in arboard's tree
+image = { version = "0.25", default-features = false, features = ["png"] }
+# the compositor's keymap, asked once (linux/seat.rs); already in Freya's tree
+wayland-client = "0.31"
+# the clipboard without focus where the compositor offers data control
+# (linux/control.rs); already in Freya's tree
+wayland-protocols-wlr = { version = "0.3", features = ["client"] }
+# poll(2) for a pipe another app writes (linux/pipe.rs); already in the tree
+libc = "0.2"
+# char → key + Shift/AltGr for the configured layout
+xkbcommon = { version = "0.9", default-features = false }
+
+[lints]
+workspace = true

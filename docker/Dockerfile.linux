@@ -1,0 +1,42 @@
+# Linux build/check image for blitznir. Used by scripts/linux-check.sh.
+# Compile-checks and unit-tests the Linux code; it cannot run the app
+# (no display, no /dev/input, no uinput). Native arch of the host.
+FROM ubuntu:24.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+# gtk 0.18:  libgtk-3-dev; libayatana-appindicator3-dev (the tray; tray-icon
+#            dlopens it at runtime)
+# cpal:      libasound2-dev (alsa-sys via pkg-config)
+# xkbcommon: libxkbcommon-dev, xkb-data (the layouts the keymap tests compile).
+#            The crate's `x11` feature would also need libxkbcommon-x11-dev.
+# reqwest 0.12 with rustls on ring: cc alone, no system libs.
+# ort-sys:   its build script downloads ONNX Runtime with ureq over native-tls,
+#            which links openssl-sys: libssl-dev.
+# evdev, smithay-clipboard (pure-Rust Wayland), arboard (x11rb): no system libs.
+# lld:       links the app (static onnxruntime) in a fraction of GNU ld's
+#            memory, which a small Docker VM runs out of.
+# libxdo-dev: the app links it: Freya's muda 0.17 keeps muda's default `libxdo`
+#            feature.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential ca-certificates curl file pkg-config \
+        libssl-dev \
+        libgtk-3-dev libayatana-appindicator3-dev \
+        libasound2-dev \
+        libxkbcommon-dev xkb-data \
+        libxdo-dev \
+        lld \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH \
+    RUSTFLAGS="-C link-arg=-fuse-ld=lld"
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+      | sh -s -- -y --no-modify-path --profile minimal \
+           --default-toolchain stable --component clippy,rustfmt \
+    && chmod -R a+w "$RUSTUP_HOME" "$CARGO_HOME" \
+    && rustc --version && cargo --version
+
+WORKDIR /work

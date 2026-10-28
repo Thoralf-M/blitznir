@@ -1,0 +1,19 @@
+# build
+target/
+target-linux/
+
+# secrets and personal data — never in the repo
+*.p12
+*.wav
+*.log
+config.toml
+state.json
+history.json
+chats.json
+images/
+
+# editors
+.DS_Store
+.idea/
+.vscode/
+.claude/

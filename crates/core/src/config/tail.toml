@@ -1,0 +1,16 @@
+
+[panel]
+# While a rewrite or translation that replaces the selection runs, an effect
+# plays from the menu-bar hammer onto the text; Esc cancels.
+effect = "beam"            # "beam": a beam of light; "lightning": strikes, with thunder; "off": none
+effect_volume = 0          # the effect's sound volume in %, 0 = none (silent by default)
+rain = false               # rain with the lightning's thunder
+dictation_effect = true    # a wave of light under the line you dictate into (macOS)
+thinking_effect = true     # a wave of light in a chat answer's place until its first word
+
+[linux]
+xkb_layout = ""            # typing's layout; "" = the desktop's (Wayland), or "de", "us", …
+paste_keys = "ctrl+v"      # sent to paste back (terminals want ctrl+shift+v)
+undo_keys = "ctrl+z"       # sent by Undo last replace
+copy_keys = "ctrl+insert"  # copies the selection where the app shares none; "" = never (a
+                           # terminal with nothing selected shows it as "5~")

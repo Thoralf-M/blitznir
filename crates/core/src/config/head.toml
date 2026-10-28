@@ -1,0 +1,10 @@
+# Blitznir settings. Edit them in Settings (the form saves by itself; the
+# Text tab's Save refuses a file that does not parse and keeps the old one),
+# or here, which applies at the next start. Every value shown is the
+# built-in default, so deleting a line changes nothing; only [[endpoints]]
+# rows, once deleted, are gone.
+
+[hotkeys]
+# Double-tap a listed modifier, or press a listed F-key once; [] = off.
+# Names: LeftShift RightShift LeftCtrl RightCtrl LeftAlt RightAlt LeftMeta
+# RightMeta Fn F1…F24. A key belongs to one action only.
