@@ -191,6 +191,10 @@ impl Platform for Wayland {
         self.inner.paste_into(f)
     }
 
+    fn refocus(&self, f: &Focus) -> bool {
+        self.inner.refocus(f)
+    }
+
     fn undo(&self, f: &Focus) -> Result<bool> {
         self.inner.undo(f)
     }

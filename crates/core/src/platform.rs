@@ -120,6 +120,11 @@ pub trait Platform: Send + Sync {
     fn clipboard_image(&self) -> Option<Vec<u8>>;
     /// Re-activate `f` and paste; false = left on the clipboard.
     fn paste_into(&self, f: &Focus) -> Result<bool>;
+    /// Re-activate `f` as `paste_into` does, and nothing else: a job without
+    /// the panel ended unpasted while the effect's overlay had the key focus.
+    /// False = `f` never came back. Linux: a no-op (the compositor hands the
+    /// focus back when the overlay goes; Wayland lets no client take it).
+    fn refocus(&self, f: &Focus) -> bool;
     /// Show our hidden windows again without taking the focus from the app
     /// in front, which keeps the keyboard (macOS; a no-op elsewhere).
     fn show_quietly(&self);

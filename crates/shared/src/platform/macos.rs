@@ -313,6 +313,10 @@ impl Platform for Mac {
         cmd_into(f, || KEY_V)
     }
 
+    fn refocus(&self, f: &Focus) -> bool {
+        front(f)
+    }
+
     fn undo(&self, f: &Focus) -> Result<bool> {
         cmd_into(f, || layout_key('z', KEY_Z))
     }

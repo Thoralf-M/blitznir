@@ -182,6 +182,23 @@ pub fn a_cancelled_dictation_rewrite_leaves_the_next_paste_alone(proxy: &LaunchP
     assert_eq!(platform.screen(), "hello there Out.");
 }
 
+/// Esc on a live dictation's rewrite while the effect's overlay has the key
+/// focus: the app dictated into gets it back, with no panel shown.
+pub fn a_cancelled_dictation_rewrite_gives_the_focus_back(proxy: &LaunchProxy) {
+    use std::sync::atomic::Ordering;
+    let platform = Arc::new(FakePlatform::new());
+    let cfg = local_config(&silent_endpoint());
+    let panel = panel_over(proxy, "dictation-refocus", &[], platform.clone(), cfg);
+    let dictated_in = platform.focused_app();
+    panel.rewrite_dictation("hello there".into(), true);
+    wait_for("the rewrite to run", || panel.ui().busy.is_some());
+    platform.ours_in_front.store(true, Ordering::SeqCst);
+    panel.escape();
+    wait_for("the focus back", || !lock(&platform.refocused).is_empty());
+    assert_eq!(*lock(&platform.refocused), [dictated_in]);
+    assert!(!panel.ui().shown, "no panel");
+}
+
 /// Esc on a batch dictation's rewrite: nothing was typed while it ran, so
 /// what was said is pasted where it was dictated, as a failed rewrite does.
 pub fn a_cancelled_batch_rewrite_puts_the_dictation_in(proxy: &LaunchProxy) {

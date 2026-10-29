@@ -268,6 +268,12 @@ impl Platform for Linux {
         self.shortcut(Keyboard::paste)
     }
 
+    /// No window can be brought back on Wayland; the compositor gives the
+    /// focus back when the overlay goes.
+    fn refocus(&self, _f: &Focus) -> bool {
+        true
+    }
+
     /// The revert offer is macOS only: Wayland places no window.
     fn show_quietly(&self) {}
 

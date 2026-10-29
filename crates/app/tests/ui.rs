@@ -48,7 +48,7 @@ const TRANSCRIPT: (f64, f64) = (500.0, 250.0);
 type Test = (&'static str, fn(&LaunchProxy));
 
 /// Every test, run in this order on the one proxy.
-const TESTS: [Test; 59] = [
+const TESTS: [Test; 60] = [
     (
         "the_dictation_wave_shows_under_the_composer",
         dictation::the_dictation_wave_shows_under_the_composer,
@@ -84,6 +84,10 @@ const TESTS: [Test; 59] = [
     (
         "a_cancelled_dictation_rewrite_leaves_the_next_paste_alone",
         jobs::a_cancelled_dictation_rewrite_leaves_the_next_paste_alone,
+    ),
+    (
+        "a_cancelled_dictation_rewrite_gives_the_focus_back",
+        jobs::a_cancelled_dictation_rewrite_gives_the_focus_back,
     ),
     (
         "a_slow_scroll_up_near_the_bottom_stays_where_it_went",

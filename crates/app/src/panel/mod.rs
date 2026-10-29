@@ -358,8 +358,9 @@ impl Panel {
         } else if lock(&self.view).job.busy() {
             let held = self.held_dictation();
             self.cancel();
-            if let Some((text, to)) = held {
-                self.put_back(text, to);
+            match held {
+                Some((text, to)) => self.put_back(text, to), // the paste brings `to` back
+                None => self.give_back(),
             }
             self.say(format!(
                 "Cancelled: edit and press {RET} again, or Esc to close"

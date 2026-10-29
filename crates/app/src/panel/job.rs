@@ -133,6 +133,29 @@ impl Panel {
         }
     }
 
+    /// A job without the panel (the quick hotkey, a dictation's rewrite)
+    /// ended unpasted, on Esc or an error: the app it came from gets the key
+    /// focus back, which the effect's overlay took. Not on a cancel by a new
+    /// open: the panel is about to take the focus itself.
+    pub(super) fn give_back(&self) {
+        let (quick, prev) = {
+            let v = lock(&self.view);
+            (v.quick, v.prev)
+        };
+        if !quick || self.platform.focused_app() == prev {
+            return;
+        }
+        let platform = self.platform.clone();
+        let back = move || {
+            if !platform.refocus(&prev) {
+                log::warn!("focus back: {:?} never came to the front", prev.0);
+            }
+        };
+        if let Err(e) = spawn("refocus", back) {
+            log::error!("focus back: {e}");
+        }
+    }
+
     /// [`Panel::job`] for a slot the caller took itself.
     pub(super) fn start(
         self: &Arc<Self>,
@@ -164,6 +187,7 @@ impl Panel {
                 Err(e) => {
                     me.unanswered(kept, Some(&e.to_string()));
                     me.unzap();
+                    me.give_back();
                     me.failed(busy, title, &e);
                 }
             }

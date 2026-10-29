@@ -256,9 +256,18 @@ impl Zap {
         thread::spawn(move || {
             thread::sleep(REFOCUS);
             drop(proxy.post_callback(move |ctx| {
-                let Some((_, win)) = me.upgrade().and_then(|me| *lock(&me.shown)) else {
+                let Some(me) = me.upgrade() else {
                     return;
                 };
+                // a job that ended meanwhile (the beam still fading) gave
+                // the focus back: the overlay must not take it again
+                let running = lock(&me.run).as_ref().map(|(i, _, _)| *i);
+                let Some((_, win)) = *lock(&me.shown) else {
+                    return;
+                };
+                if running != Some(id) {
+                    return;
+                }
                 if let Some(w) = ctx.windows_mut().get_mut(&win) {
                     w.window_mut().focus_window();
                 }
