@@ -6,6 +6,8 @@
 selected text in place. Local AI first: no account, no API key, no subscription, and nothing
 leaves your machine unless you point it at a cloud endpoint. macOS and Linux (GNOME).**
 
+https://github.com/user-attachments/assets/fcccda74-5fa9-45f8-a048-3cd017899496
+
 ## Why
 
 Dictation that sends your voice to a server is slow to start and not yours. Rewriting text by
