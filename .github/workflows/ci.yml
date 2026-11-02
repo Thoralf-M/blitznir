@@ -13,6 +13,10 @@ jobs:
       matrix:
         os: [macos-14, ubuntu-24.04]
     runs-on: ${{ matrix.os }}
+    # no debug info, no incremental: the Ubuntu runner's disk filled up with them
+    env:
+      CARGO_PROFILE_DEV_DEBUG: 0
+      CARGO_INCREMENTAL: 0
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -34,6 +38,7 @@ jobs:
             ~/.cache/ort.pyke.io
             ~/Library/Caches/ort.pyke.io
             target
-          key: ${{ matrix.os }}-cargo-${{ hashFiles('Cargo.lock') }}
-          restore-keys: ${{ matrix.os }}-cargo-
+          # v2: never restore a target built with debug info
+          key: ${{ matrix.os }}-cargo-v2-${{ hashFiles('Cargo.lock') }}
+          restore-keys: ${{ matrix.os }}-cargo-v2-
       - run: scripts/check.sh
