@@ -8,6 +8,7 @@ use crate::zap::Effect;
 use blitznir_core::config;
 use blitznir_core::jobs::Unfinished;
 use blitznir_core::llm::CancellationToken;
+use blitznir_core::store::Unanswered;
 use blitznir_core::{Error, Result, lock, tasks};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -76,6 +77,26 @@ impl Panel {
                 }
                 _ => ui.preview = text.into(),
             }
+            drop(v);
+            self.notify();
+        }
+    }
+
+    /// A chat answer's reasoning to the window as it streams, throttled as
+    /// [`Panel::deltas`] is: a trace comes at ~200 tokens a second.
+    pub(super) fn thoughts(&self, cancel: &CancellationToken) -> impl FnMut(&str) + Send + '_ {
+        let cancel = cancel.clone();
+        let mut last: Option<Instant> = None;
+        move |text: &str| {
+            if last.is_some_and(|t| t.elapsed() < DELTA_EVERY) || cancel.is_cancelled() {
+                return;
+            }
+            last = Some(Instant::now());
+            let mut v = lock(&self.view);
+            if cancel.is_cancelled() || v.ui.busy != Some(Busy::Chat) {
+                return;
+            }
+            v.ui.trace = text.into();
             drop(v);
             self.notify();
         }
@@ -179,13 +200,20 @@ impl Panel {
             if out.is_ok() {
                 me.zap.finish(); // the last strike lands first; an esc meanwhile still stops the paste
             }
-            let Some(kept) = me.end_job(id, out.is_ok()) else {
+            let why = out
+                .as_ref()
+                .err()
+                .map(|e| Unanswered::Failed(e.to_string()));
+            let Some(kept) = me.end_job(id, why) else {
                 return; // cancelled: cancel() already said so
             };
             match out {
                 Ok(text) => finish(&me, text),
                 Err(e) => {
                     me.unanswered(kept, Some(&e.to_string()));
+                    if busy == Busy::Chat {
+                        me.chats_changed();
+                    }
                     me.unzap();
                     me.give_back();
                     me.failed(busy, title, &e);
@@ -194,7 +222,7 @@ impl Panel {
             me.idle();
         });
         spawned.inspect_err(|_| {
-            self.end_job(id, false); // never asked: nothing lost
+            self.end_job(id, Some(Unanswered::Failed("it could not start".into())));
             self.unzap();
             self.idle();
         })
@@ -226,15 +254,24 @@ impl Panel {
     }
 
     /// Clear job `id`; Some (what it kept) if it was still the running one.
-    /// Unanswered, the chat turn it was for is taken back here, under the
-    /// same lock as the clear, so a next send never finds it.
-    fn end_job(&self, id: u64, answered: bool) -> Option<Option<Unfinished>> {
+    /// Unanswered (`why`), the chat turn it was for is marked here, under
+    /// the same lock as the clear, so a next send never finds it unmarked.
+    fn end_job(&self, id: u64, why: Option<Unanswered>) -> Option<Option<Unfinished>> {
         let mut v = lock(&self.view);
         let current = v.job.end(id);
-        if current.is_some() && !answered {
-            self.unasked(&mut v);
+        if let Some(why) = why.filter(|_| current.is_some()) {
+            self.unasked(&mut v, why);
         }
         current
+    }
+
+    /// The sidebar's chats and the tray's count, after a turn was kept
+    /// unanswered (a new chat is stored by then). Reads chats.json: never
+    /// under the lock.
+    fn chats_changed(&self) {
+        let rows = self.rows();
+        self.with_ui(|ui| ui.chats = rows);
+        self.tray.refresh();
     }
 
     /// A job without an answer: what it kept goes into the history,
@@ -273,34 +310,39 @@ impl Panel {
     }
 
     pub fn cancel(&self) {
-        let cancelled = {
+        let (cancelled, chat) = {
             let mut v = lock(&self.view);
+            let chat = v.asked.is_some();
             // a dictation rewrite ends with its job: kept, the next paste-back
             // would take its characters back
             v.dictation = None;
             let cancelled = v.job.cancel(); // drops the connection: the server stops
             if cancelled.is_some() {
-                self.unasked(&mut v);
+                self.unasked(&mut v, Unanswered::Cancelled);
             }
-            cancelled
+            (cancelled, chat)
         };
         let Some(kept) = cancelled else {
             return;
         };
         log::info!("job cancelled");
         self.unanswered(kept, None);
+        if chat {
+            self.chats_changed();
+        }
         self.unzap();
         self.idle();
     }
 
-    /// The job ended without an answer: its chat turn leaves the chat (two
-    /// user turns in a row break strict chat templates), and its text and
+    /// The job ended without an answer (`why`): a chat's turn stays in it,
+    /// marked; a typed translation's leaves its chat, and its text and
     /// images go back into the composer.
-    fn unasked(&self, v: &mut View) {
+    fn unasked(&self, v: &mut View, why: Unanswered) {
         let asked = v.asked.take();
-        self.unask(v, asked);
+        let pending = v.pending.take();
+        self.unask(v, asked, pending.is_none().then_some(why));
         v.ui.streaming = None;
-        if let Some((text, mut shots)) = v.pending.take() {
+        if let Some((text, mut shots)) = pending {
             let typed = std::mem::take(&mut v.ui.composer.text);
             let text = if typed.is_empty() {
                 text

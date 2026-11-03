@@ -21,6 +21,8 @@ struct Seen {
     chat: Option<String>,
     /// A jump to the end is on its way: the position is not there yet.
     going: bool,
+    /// The next change of size is a fold opened or closed ([`Follow::hold`]).
+    held: bool,
 }
 
 /// Sizes come in logical pixels, divided from physical ones.
@@ -57,12 +59,20 @@ impl Follow {
         if !other && same(s.content, height) {
             return;
         }
-        let stick = chat.is_some() && (other || self.at_bottom(&s));
+        let held = std::mem::take(&mut s.held);
+        let stick = chat.is_some() && (other || (!held && self.at_bottom(&s)));
         s.content = height;
         s.chat = chat.map(str::to_string);
         if stick {
             self.to_end(&mut s);
         }
+    }
+
+    /// A fold opens or closes in the text: its next change of size keeps
+    /// the view where it is, at the bottom too, so the fold's header stays
+    /// under the pointer.
+    pub fn hold(&self) {
+        self.seen.borrow_mut().held = true;
     }
 
     /// The window around the text laid out at `height`.

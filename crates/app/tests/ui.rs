@@ -1,8 +1,7 @@
-//! The panel's UI headless (freya-testing): its real components over core's
-//! Fake platform and made-up chats in a temporary data dir. No window,
-//! nothing on the screen, no input to or from anything else. Its own main:
-//! the panel needs a LaunchProxy, and macOS makes the event loop behind one
-//! only on the main thread (the loop never runs).
+//! The panel's UI headless (freya-testing): its real components over core's Fake platform and
+//! made-up chats in a temporary data dir. No window, nothing on the screen, no input to or from
+//! anything else. Its own main: the panel needs a LaunchProxy, and macOS makes the event loop
+//! behind one only on the main thread (the loop never runs).
 // a test runner's report is its output: the app's no-println rule is for the app
 #![allow(clippy::print_stdout)]
 
@@ -22,6 +21,8 @@ mod kit;
 mod pages;
 #[path = "ui/quick.rs"]
 mod quick;
+#[path = "ui/reasoning.rs"]
+mod reasoning;
 #[path = "ui/record.rs"]
 mod record;
 #[path = "ui/select.rs"]
@@ -48,7 +49,7 @@ const TRANSCRIPT: (f64, f64) = (500.0, 250.0);
 type Test = (&'static str, fn(&LaunchProxy));
 
 /// Every test, run in this order on the one proxy.
-const TESTS: [Test; 60] = [
+const TESTS: [Test; 64] = [
     (
         "the_dictation_wave_shows_under_the_composer",
         dictation::the_dictation_wave_shows_under_the_composer,
@@ -259,8 +260,8 @@ const TESTS: [Test; 60] = [
         jobs::a_rewrite_cut_short_by_a_new_open_keeps_its_prompt,
     ),
     (
-        "a_failed_rewrite_and_a_cancelled_chat_keep_their_prompts",
-        jobs::a_failed_rewrite_and_a_cancelled_chat_keep_their_prompts,
+        "a_failed_rewrite_keeps_its_prompt_a_cancelled_chat_turn_its_chat",
+        jobs::a_failed_rewrite_keeps_its_prompt_a_cancelled_chat_turn_its_chat,
     ),
     (
         "a_saved_layout_reaches_the_platform_at_once",
@@ -277,6 +278,22 @@ const TESTS: [Test; 60] = [
     (
         "a_selection_goes_with_its_chat",
         chat::a_selection_goes_with_its_chat,
+    ),
+    (
+        "an_answers_thinking_opens_and_folds_on_a_press",
+        reasoning::an_answers_thinking_opens_and_folds_on_a_press,
+    ),
+    (
+        "opening_a_thinking_row_keeps_the_scroll",
+        reasoning::opening_a_thinking_row_keeps_the_scroll,
+    ),
+    (
+        "a_long_trace_scrolls_in_its_box_and_folds_from_its_end",
+        reasoning::a_long_trace_scrolls_in_its_box_and_folds_from_its_end,
+    ),
+    (
+        "the_thinking_row_streams_live",
+        reasoning::the_thinking_row_streams_live,
     ),
     (
         "the_buttons_row_unwraps_once_it_fits",

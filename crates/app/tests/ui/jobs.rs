@@ -4,11 +4,14 @@
 use super::kit::*;
 use blitznir_app::panel::Mode;
 use blitznir_app::panel::view::Busy;
+use blitznir_app::ui;
 use blitznir_core::lock;
 use blitznir_core::platform::Platform;
 use blitznir_core::platform::fake::FakePlatform;
+use blitznir_core::store::Unanswered;
 use blitznir_core::tasks::Kind;
-use freya::prelude::LaunchProxy;
+use freya::prelude::{LaunchProxy, Size2D};
+use freya_testing::prelude::*;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -92,9 +95,11 @@ pub fn a_rewrite_cut_short_by_a_new_open_keeps_its_prompt(proxy: &LaunchProxy) {
     assert!(row.prompt.as_deref().is_some_and(|p| p.contains(ASKED)));
 }
 
-/// A rewrite whose request fails and a chat turn cut short leave their
-/// prompts in the history too, the failure with its error.
-pub fn a_failed_rewrite_and_a_cancelled_chat_keep_their_prompts(proxy: &LaunchProxy) {
+/// A rewrite whose request fails leaves its prompt in the history, with its
+/// error. A chat turn cut short stays in its chat instead, saved and listed,
+/// marked "Cancelled" with a Send again; no history row. Send again asks it
+/// anew as the chat's last turn.
+pub fn a_failed_rewrite_keeps_its_prompt_a_cancelled_chat_turn_its_chat(proxy: &LaunchProxy) {
     const ASKED: &str = "make it formal";
     const SAID: &str = "what does this paragraph mean?";
     let platform = Arc::new(FakePlatform::new());
@@ -118,19 +123,45 @@ pub fn a_failed_rewrite_and_a_cancelled_chat_keep_their_prompts(proxy: &LaunchPr
     panel.set_composer(SAID.into());
     panel.send(); // runs until cancelled
     wait_for("the chat turn", || panel.ui().busy == Some(Busy::Chat));
+    let p = panel.clone();
+    let app = move || ui::app(p.clone());
+    let (mut t, ()) = TestingRunner::new(app, Size2D::new(WINDOW.0, WINDOW.1), |_| {}, 1.0);
+    settle(&mut t);
+    panel.cancel(); // Esc
+    wait_for("the chat listed", || panel.ui().chats.len() == 1);
+    settle(&mut t);
+    shot(&mut t, "chat-cancelled");
+    let ui = panel.ui();
+    assert!(ui.recent.iter().all(|h| h.mode != "chat"), "no history row");
+    assert_eq!(ui.messages.len(), 1);
+    assert_eq!(ui.messages[0].unanswered, Some(Unanswered::Cancelled));
+    assert!(
+        ui.composer.text.is_empty(),
+        "the turn stays where it was asked"
+    );
+    assert!(paragraph_with(&t, SAID).is_some() && label_at(&t, "Cancelled").is_some());
+    press_label(&mut t, "Send again");
+    wait_for("asked again", || panel.ui().busy == Some(Busy::Chat));
+    settle(&mut t);
+    shot(&mut t, "chat-sent-again");
+    let ui = panel.ui();
+    assert_eq!(ui.messages.len(), 1, "the marked turn went, a new one came");
+    assert_eq!(
+        (ui.messages[0].text.as_str(), &ui.messages[0].unanswered),
+        (SAID, &None)
+    );
+    assert!(label_at(&t, "Send again").is_none());
+    // cut short by another open: kept the same way
     panel.open(Mode::Chat, Some("other".into()));
     wait_for("the new open", || {
         panel.ui().selection.as_deref() == Some("other")
     });
-    let ui = panel.ui();
-    let row = ui
-        .recent
-        .iter()
-        .find(|h| h.mode == "chat")
-        .expect("a chat row");
-    assert_eq!(row.prompt.as_deref(), Some(SAID));
-    assert_eq!(row.original.as_deref(), Some("a paragraph"));
-    assert_eq!(row.unanswered().as_deref(), Some("Cancelled"));
+    let chat = &panel.ui().chats[0];
+    assert_eq!(chat.messages, 1);
+    assert!(
+        panel.ui().recent.iter().all(|h| h.mode != "chat"),
+        "still no history row"
+    );
 }
 
 /// Settings' Save hands `[linux]` to the platform: the typing layout

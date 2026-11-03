@@ -97,6 +97,9 @@ fn a_recent_row_is_read_until_something_is_asked() {
         text: "wann?".into(),
         ts: String::new(),
         images: vec![],
+        thinking: String::new(),
+        unthought: blitznir_core::store::Unthought::No,
+        unanswered: None,
     });
     assert!(!viewing(&ui), "asked: a chat like any other");
 }

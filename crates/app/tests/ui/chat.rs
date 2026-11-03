@@ -84,10 +84,6 @@ pub fn a_rename_stays_with_its_chat(proxy: &LaunchProxy) {
     );
 }
 
-fn fake() -> std::sync::Arc<blitznir_core::platform::fake::FakePlatform> {
-    std::sync::Arc::new(blitznir_core::platform::fake::FakePlatform::new())
-}
-
 /// A long title in a narrow window is cut short: the head's note and
 /// Delete keep their width (squeezed, each wrapped a letter a line).
 pub fn a_long_title_leaves_the_head_its_delete(proxy: &LaunchProxy) {

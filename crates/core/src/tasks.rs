@@ -327,6 +327,27 @@ pub fn chat_body(cfg: &Config, model: &str, selection: &str, turns: &[Turn<'_>])
     })
 }
 
+/// The think-off retry's system note: the reasoning that ran out of tokens
+/// ({notes}). Measured on Sage, 3 looped questions: better answers than a
+/// plain retry in 2, a tie in 1, at the same 1–2 s.
+const EARLIER_REASONING: &str = "Your earlier reasoning on this question (it did not finish) is below. Use it, then give the final answer directly.\n\n<notes>\n{notes}\n</notes>";
+
+/// Add `notes` ([`EARLIER_REASONING`]) to a body's system message, or as
+/// one at its start: strict chat templates take one system message, first.
+pub fn add_notes(body: &mut Value, notes: &str) {
+    let note = EARLIER_REASONING.replace("{notes}", notes);
+    let Some(messages) = body["messages"].as_array_mut() else {
+        return;
+    };
+    match messages.first_mut() {
+        Some(m) if m["role"] == "system" && m["content"].is_string() => {
+            let system = m["content"].as_str().unwrap_or_default();
+            m["content"] = format!("{system}\n\n{note}").into();
+        }
+        _ => messages.insert(0, json!({"role": "system", "content": note})),
+    }
+}
+
 /// The translate direction from the language check's answer. When the check
 /// failed and home is German, an umlaut/stopword count decides; for another
 /// home language the text is taken as foreign.

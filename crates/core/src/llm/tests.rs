@@ -1,8 +1,10 @@
 use super::mock::{Mock, Reply, dead_endpoint, mock};
 use super::*;
-use crate::store::State;
+use crate::store::{State, Unthought};
 use crate::tasks::tests::{block, prompts_md, vectors};
 use serde_json::json;
+
+mod fallback;
 
 fn data(v: &Value) -> String {
     format!("data: {v}\n")
@@ -114,11 +116,48 @@ async fn a_chat_answer_keeps_its_fences() {
             &m.ep,
             body(100),
             &mut |t| seen.push(t.to_string()),
+            &mut |_| {},
             &CancellationToken::default(),
         )
         .await;
-    assert_eq!(r.unwrap(), fenced);
+    assert_eq!(r.unwrap().text, fenced);
     assert_eq!(seen, [fenced], "streamed as written too");
+}
+
+async fn chat(m: &Mock, b: Value) -> Answer {
+    chat_seen(m, b).await.0
+}
+
+/// [`chat`], and the reasoning as it streamed.
+async fn chat_seen(m: &Mock, b: Value) -> (Answer, Vec<String>) {
+    let mut seen = vec![];
+    let r = Client::new()
+        .unwrap()
+        .chat(
+            &m.ep,
+            b,
+            &mut |_| {},
+            &mut |t| seen.push(t.to_string()),
+            &CancellationToken::default(),
+        )
+        .await;
+    (r.unwrap(), seen)
+}
+
+#[tokio::test]
+async fn a_chat_answer_keeps_its_thinking_under_either_key() {
+    let lines = vec![
+        thinking("reasoning_content", "First, "),
+        thinking("reasoning", "the sky."),
+        content("Blue."),
+        done(),
+    ];
+    let m = mock(vec![Reply::Sse(lines)], "");
+    let (a, seen) = chat_seen(&m, body(100)).await;
+    let want = ("Blue.", "First, the sky.", Unthought::No);
+    assert_eq!((a.text.as_str(), a.thinking.as_str(), a.unthought), want);
+    assert_eq!(seen, ["First, ", "First, the sky."], "streamed as it came");
+    m.server.join().unwrap();
 }
 
 #[test]

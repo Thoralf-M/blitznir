@@ -2,7 +2,7 @@
 //! up to is a whole answer. Only a whole one may reach the user's selection:
 //! a cut-off rewrite pasted over it replaces text the clipboard no longer has.
 
-use crate::{Error, Result};
+use crate::{Error, Result, tasks};
 use regex::Regex;
 use serde_json::Value;
 use std::sync::LazyLock;
@@ -14,7 +14,7 @@ pub(super) enum Line {
     Done,
     Delta {
         content: String,
-        reasoning: usize,
+        reasoning: String,
         /// Set on the last chunk: "stop", "length", …
         finish: Option<String>,
     },
@@ -44,7 +44,7 @@ pub(super) fn parse_line(raw: &str) -> Line {
         .find(|s| !s.is_empty());
     Line::Delta {
         content: text("content"),
-        reasoning: reasoning.map_or(0, |r| r.chars().count()),
+        reasoning: reasoning.unwrap_or_default(),
         finish: choice["finish_reason"].as_str().map(str::to_owned),
     }
 }
@@ -96,6 +96,8 @@ pub(super) enum Ended {
     Budget,
     /// An error in the stream, another finish_reason, or no [DONE].
     Broken(String),
+    /// Its reasoning repeated itself ([`super::looping::Watch`]): dropped.
+    Looped,
 }
 
 /// The stream's last finish_reason, and whether [DONE] came.
@@ -109,21 +111,53 @@ pub(super) fn ended(finish: Option<&str>, done: bool) -> Ended {
     }
 }
 
+/// Turns `body` into the next try for an answer that ran out of tokens, or
+/// false when none is left: first the ceiling as budget, then — if it was
+/// asked to think — the same without thinking, `reasoning` (the starved
+/// try's) in its system message as notes ([`tasks::add_notes`]). A trace
+/// that `looped` skips the budget: more of it cannot end a loop.
+/// Qwen-style reasoners loop ("Wait, I'll check…") past any budget:
+/// Sage-A1.5 on one chat question filled 8192 tokens in 7 of 8 runs at
+/// every reasoning_effort, its last 4000 chars repeating earlier text.
+/// An answer without thinking beats an error.
+pub(super) fn escalate(body: &mut Value, reasoning: &str, looped: bool) -> bool {
+    let budget = body["max_tokens"].as_u64().unwrap_or(0) as usize;
+    let n = reasoning.chars().count();
+    if !looped && budget < super::MAX_TOKENS_CEILING {
+        log::warn!(
+            "out of tokens at max_tokens={budget} ({n} chars of reasoning) — retrying with max_tokens={}",
+            super::MAX_TOKENS_CEILING
+        );
+        body["max_tokens"] = super::MAX_TOKENS_CEILING.into();
+        return true;
+    }
+    if body["chat_template_kwargs"]["enable_thinking"] == true {
+        let why = if looped { "looped" } else { "still thinking" };
+        log::warn!("{why} at max_tokens={budget} ({n} chars) — answering without thinking");
+        body["chat_template_kwargs"]["enable_thinking"] = false.into();
+        if !reasoning.trim().is_empty() {
+            tasks::add_notes(body, super::looping::unlooped(reasoning));
+        }
+        return true;
+    }
+    false
+}
+
 /// One attempt's result.
 pub(super) struct Attempt {
     /// Unwrapped, as its task wants it.
     pub content: String,
-    /// Characters of reasoning seen.
-    pub reasoning: usize,
+    /// The reasoning, as the model wrote it.
+    pub reasoning: String,
     pub ended: Ended,
 }
 
 impl Attempt {
-    /// Out of tokens: cut off, or reasoned without answering. Worth one
-    /// retry with a bigger budget.
+    /// Out of tokens: cut off, reasoned without answering, or looped. Worth
+    /// a retry ([`escalate`]).
     pub fn starved(&self) -> bool {
-        self.ended == Ended::Budget
-            || (self.ended == Ended::Whole && self.content.is_empty() && self.reasoning > 0)
+        matches!(self.ended, Ended::Budget | Ended::Looped)
+            || (self.ended == Ended::Whole && self.content.is_empty() && !self.reasoning.is_empty())
     }
 
     /// The answer, only when it is whole and not empty; `budget` was its
@@ -131,7 +165,7 @@ impl Attempt {
     /// chat_reasoning`), so the advice is to turn that off, not to change
     /// a model that only did as asked.
     pub fn answer(self, budget: usize, asked: bool) -> Result<String> {
-        let n = self.reasoning;
+        let n = self.reasoning.chars().count();
         let fix = if asked {
             "it thought too long: turn off Think, next to the model ([llm] chat_reasoning)"
         } else {
@@ -139,6 +173,9 @@ impl Attempt {
         };
         match self.ended {
             Ended::Broken(why) => Err(Error::Llm(why)),
+            Ended::Looped => Err(Error::Llm(format!(
+                "the reasoning went round in circles ({n} chars) and was stopped; {fix}"
+            ))),
             Ended::Budget if n > 0 => Err(Error::Llm(format!(
                 "the answer was cut off at max_tokens={budget} after {n} chars of reasoning; {fix}"
             ))),
@@ -163,7 +200,7 @@ mod tests {
         let cut = |asked| {
             let a = Attempt {
                 content: "half".into(),
-                reasoning: 900,
+                reasoning: "x".repeat(900),
                 ended: Ended::Budget,
             };
             a.answer(8192, asked).unwrap_err().to_string()
@@ -178,15 +215,17 @@ mod tests {
         assert_eq!(parse_line("event: x"), Line::Skip);
         assert_eq!(parse_line("data:[DONE]\r"), Line::Done);
         let both = r#"data: {"choices":[{"delta":{"content":"a","reasoning_content":"xyz"}}]}"#;
-        let delta = |content: &str, reasoning, finish: Option<&str>| Line::Delta {
+        let delta = |content: &str, reasoning: &str, finish: Option<&str>| Line::Delta {
             content: content.into(),
-            reasoning,
+            reasoning: reasoning.into(),
             finish: finish.map(str::to_owned),
         };
-        assert_eq!(parse_line(both), delta("a", 3, None));
-        assert_eq!(parse_line(r#"data: {"usage":{}}"#), delta("", 0, None));
+        assert_eq!(parse_line(both), delta("a", "xyz", None));
+        let theirs = r#"data: {"choices":[{"delta":{"reasoning":"hm"}}]}"#;
+        assert_eq!(parse_line(theirs), delta("", "hm", None));
+        assert_eq!(parse_line(r#"data: {"usage":{}}"#), delta("", "", None));
         let last = r#"data: {"choices":[{"delta":{},"finish_reason":"length"}]}"#;
-        assert_eq!(parse_line(last), delta("", 0, Some("length")));
+        assert_eq!(parse_line(last), delta("", "", Some("length")));
         let failed = r#"data: {"error":{"message":"out of memory","code":500}}"#;
         assert_eq!(parse_line(failed), Line::Failed("out of memory".into()));
         assert_eq!(

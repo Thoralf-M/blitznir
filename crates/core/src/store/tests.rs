@@ -34,6 +34,9 @@ fn msg(role: &str, content: &str, images: Vec<String>) -> Message {
         content: content.into(),
         ts: now_stamp(),
         images,
+        thinking: String::new(),
+        unthought: Unthought::No,
+        unanswered: None,
     }
 }
 
@@ -291,4 +294,52 @@ fn all_chats_go_at_once_with_their_images() {
     assert!(t.0.chats().is_empty());
     assert!(!t.1.images().join(&name).exists());
     assert_eq!(t.0.clear_chats().unwrap(), 0);
+}
+
+#[test]
+fn an_answer_keeps_its_thinking_and_old_chats_still_load() {
+    let t = tmp(4);
+    let mut c = chat(&t.0, "why?");
+    let mut a = msg("assistant", "Because.", vec![]);
+    (a.thinking, a.unthought) = ("Wait, I'll check…".into(), Unthought::Looped);
+    c.messages.push(a.clone());
+    t.0.save_chat(&mut c).unwrap();
+    assert_eq!(t.0.chat(&c.id).unwrap().messages[1], a);
+    let file = std::fs::read_to_string(t.1.chats()).unwrap();
+    assert_eq!(
+        file.matches("thinking").count(),
+        1,
+        "none on the user's turn"
+    );
+    let old = r#"[{"id":"a1","name":"Old","created":"x","updated":"x",
+        "messages":[{"role":"assistant","content":"Hi.","ts":"x"}]}]"#;
+    std::fs::write(t.1.chats(), old).unwrap();
+    let m = &t.0.chat("a1").expect("an old chat loads").messages[0];
+    assert_eq!(
+        (m.content.as_str(), m.thinking.as_str(), m.unthought),
+        ("Hi.", "", Unthought::No)
+    );
+}
+
+#[test]
+fn an_unanswered_turn_stays_marked_and_is_not_sent() {
+    let t = tmp(4);
+    let mut c = chat(&t.0, "first?");
+    c.messages[0].unanswered = Some(Unanswered::Cancelled);
+    c.messages.push(msg("user", "second?", vec![]));
+    c.messages[1].unanswered = Some(Unanswered::Failed("the model crashed".into()));
+    c.messages.push(msg("user", "third?", vec![]));
+    t.0.save_chat(&mut c).unwrap();
+    let back = t.0.chat(&c.id).expect("kept, its first turn unanswered");
+    assert_eq!(back.messages, c.messages);
+    let says: Vec<String> = back
+        .messages
+        .iter()
+        .filter_map(|m| m.unanswered.as_ref())
+        .map(Unanswered::says)
+        .collect();
+    assert_eq!(says, ["Cancelled", "Failed: the model crashed"]);
+    let sent: Vec<&str> = back.sent().map(|m| m.content.as_str()).collect();
+    assert_eq!(sent, ["third?"]);
+    assert!(t.0.history().is_empty(), "no history row");
 }

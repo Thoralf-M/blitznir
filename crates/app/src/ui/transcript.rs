@@ -5,15 +5,17 @@
 use super::answer::{Body, use_selection};
 use super::follow::use_follow;
 use super::icons::{self, icon_button};
-use super::opened::{Delete, Head, Prompt};
+use super::opened::{Delete, DictationCard, Head};
+use super::reasoning::{Live, Reasoning, use_live};
+use super::section::choice;
 use super::select::Selectable;
-use super::style::{Palette, head, use_palette};
+use super::style::{Look, Palette, head, use_palette};
 use super::thinking::{Thinking, Wave, use_wave};
 use super::thumbs::thumbs;
 use crate::panel::Panel;
 use crate::panel::view::{self, Msg, RET, Ui};
 use blitznir_core::markdown::select::{self, Piece};
-use blitznir_core::store::{HistoryItem, HistoryKind};
+use blitznir_core::store::Unthought;
 use freya::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -27,10 +29,14 @@ fn clock(ts: &str) -> String {
 #[derive(PartialEq)]
 struct MessageCard {
     msg: Msg,
+    /// Its place in the chat: what Send again sends.
+    index: usize,
     /// Its first piece in the chat's selection.
     base: usize,
     /// The answer just in: the thinking wave fades out over it.
     wave: bool,
+    /// Its trace's fold, when the band keeps it ([`Reasoning::fold`]).
+    fold: Option<State<bool>>,
 }
 
 impl Component for MessageCard {
@@ -40,6 +46,7 @@ impl Component for MessageCard {
         let m = &self.msg;
         let user = m.role == "user";
         let (copy, text) = (panel.clone(), m.text.clone());
+        let again_panel = panel.clone();
         let mut meta = rect()
             .horizontal()
             .cross_align(Alignment::Center)
@@ -65,83 +72,32 @@ impl Component for MessageCard {
             markdown: !user,
             base: self.base,
         };
+        let thinking = (!user && !m.thinking.is_empty()).then(|| Reasoning {
+            text: m.thinking.clone(),
+            unthought: m.unthought,
+            fold: self.fold,
+        });
+        let again = self.index;
+        let unanswered = m.unanswered.as_ref().map(|why| {
+            let resend = again_panel.clone();
+            rect()
+                .horizontal()
+                .cross_align(Alignment::Center)
+                .spacing(6.0)
+                .child(label().text(why.says()).font_size(12.0).color(p.muted))
+                .child(choice(&p, Look::Tool, "Send again", move |_| {
+                    resend.resend(again)
+                }))
+        });
         rect()
             .width(Size::fill())
             .spacing(4.0)
             .child(meta)
+            .maybe_child(thinking)
             .maybe_child(thumbs(&p, &m.images, None))
             .child(body)
+            .maybe_child(unanswered)
             .maybe_child(self.wave.then_some(Thinking { base: self.base }))
-    }
-}
-
-/// The history row a chat is about, as its first turn: its head (what it
-/// is, its stamp, Copy, Write out and, while only it is read, Delete). A
-/// replacement shows the prompt it came from and the selection it
-/// replaced, muted, before the result.
-#[derive(PartialEq)]
-struct DictationCard {
-    item: HistoryItem,
-    deletable: bool,
-}
-
-impl Component for DictationCard {
-    fn render(&self) -> impl IntoElement {
-        let p = use_palette();
-        let h = &self.item;
-        let when = h.ts.replace('T', " ");
-        let replaced = h.kind() == HistoryKind::Replacement;
-        let delete = self.deletable.then_some(if replaced {
-            Delete {
-                ask: "Delete this replacement?",
-                tip: "Delete this replacement",
-            }
-        } else {
-            Delete {
-                ask: "Delete this dictation?",
-                tip: "Delete this dictation",
-            }
-        });
-        let top = Head {
-            title: h.what().into(),
-            note: when.get(..16).unwrap_or(&when).to_string(),
-            text: h.unanswered().is_none().then(|| h.text.clone()),
-            delete,
-            rename: false,
-        };
-        let prompt = h.prompt.clone().filter(|_| replaced).map(|text| Prompt {
-            action: h.action.clone(),
-            text,
-        });
-        let part = |title: &str, text: Selectable| {
-            rect()
-                .width(Size::fill())
-                .spacing(4.0)
-                .child(head(&p, title).font_size(13.0))
-                .child(text)
-        };
-        let before = replaced.then(|| {
-            let original = h.original.as_deref().unwrap_or("(nothing was selected)");
-            let text = Selectable::new()
-                .span(original.to_string())
-                .width(Size::fill());
-            part("Before", text.color(p.muted))
-        });
-        let text = Selectable::new().span(h.text.clone()).width(Size::fill());
-        let after: Element = if let Some(why) = h.unanswered() {
-            part("After", Selectable::new().span(why).color(p.muted)).into()
-        } else if replaced {
-            part("After", text).into()
-        } else {
-            text.into_element()
-        };
-        rect()
-            .width(Size::fill())
-            .spacing(12.0)
-            .child(top)
-            .maybe_child(prompt)
-            .maybe_child(before)
-            .child(after)
     }
 }
 
@@ -192,8 +148,14 @@ fn selection(p: &Palette, ui: &Ui) -> Vec<Element> {
 }
 
 /// The chat's cards, and its pieces of text in order for the selection;
-/// `fading`: the thinking wave fades out over the last answer.
-fn chat(p: &Palette, ui: &Ui, wave: &Wave, fading: bool) -> (Vec<Element>, Vec<Piece>) {
+/// `fading`: the thinking wave fades out over the last answer; `live`: the
+/// streaming answer's fold, and the message it lands as.
+fn chat(
+    p: &Palette,
+    ui: &Ui,
+    wave: &Wave,
+    (fading, live): (bool, Live),
+) -> (Vec<Element>, Vec<Piece>) {
     let mut pieces = vec![];
     let mut out: Vec<Element> = vec![];
     let n = ui.messages.len();
@@ -202,8 +164,10 @@ fn chat(p: &Palette, ui: &Ui, wave: &Wave, fading: bool) -> (Vec<Element>, Vec<P
         pieces.extend(select::pieces(&select::message(&m.text, m.role != "user")));
         let card = MessageCard {
             msg: m.clone(),
+            index: i,
             base,
             wave: fading && i + 1 == n,
+            fold: (live.1 == Some(i)).then_some(live.0),
         };
         out.push(rect().key(i).width(Size::fill()).child(card).into());
     }
@@ -258,14 +222,24 @@ fn chat(p: &Palette, ui: &Ui, wave: &Wave, fading: bool) -> (Vec<Element>, Vec<P
     }
     if let Some(text) = &ui.streaming {
         let wave = ui.thinking.then_some(wave);
-        out.push(streaming(p, text, wave, &mut pieces));
+        let trace = (!ui.trace.is_empty()).then(|| Reasoning {
+            text: ui.trace.clone(),
+            unthought: Unthought::No,
+            fold: Some(live.0),
+        });
+        out.push(streaming(p, (text, trace), wave, &mut pieces));
     }
     (out, pieces)
 }
 
 /// The answer as it streams in, its pieces after the chat's; `wave`: the
 /// thinking wave over it (it stands in for the dots before the first word).
-fn streaming(p: &Palette, text: &str, wave: Option<&Wave>, pieces: &mut Vec<Piece>) -> Element {
+fn streaming(
+    p: &Palette,
+    (text, trace): (&str, Option<Reasoning>),
+    wave: Option<&Wave>,
+    pieces: &mut Vec<Piece>,
+) -> Element {
     let meta = label().text("Assistant").font_weight(FontWeight::SEMI_BOLD);
     let base = pieces.len();
     let body: Element = if text.is_empty() {
@@ -283,6 +257,7 @@ fn streaming(p: &Palette, text: &str, wave: Option<&Wave>, pieces: &mut Vec<Piec
         .width(Size::fill())
         .spacing(4.0)
         .child(meta)
+        .maybe_child(trace)
         .child(body);
     match wave {
         Some(w) => card
@@ -315,10 +290,11 @@ impl Component for Band {
             }
         });
         let (wave, fading) = use_wave(ui.thinking, ui.streaming.is_some(), ui.messages.len());
+        let live = use_live(state, follow.clone());
         let panel = use_consume::<Arc<Panel>>();
         let open = ui.chatting.then(|| ui.chat_id.clone());
         let (items, pieces) = if ui.chatting {
-            chat(&p, &ui, &wave, fading && ui.thinking)
+            chat(&p, &ui, &wave, (fading && ui.thinking, live))
         } else {
             (selection(&p, &ui), vec![])
         };

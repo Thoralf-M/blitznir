@@ -1,15 +1,16 @@
 //! Chat about the selection or a Recent row, the saved chats, and a
 //! translation shown as a chat turn.
 
+mod resend;
+
 use super::job::Doing;
 use super::view::{self, Busy, ChatRow, Msg, Shot, View};
 use super::{BUSY, Panel, Said};
 use blitznir_core::config::{Config, Endpoint};
-use blitznir_core::jobs::Unfinished;
-use blitznir_core::llm::CancellationToken;
-use blitznir_core::store::{self, Chat, Made, Message, Store};
+use blitznir_core::llm::{Answer, CancellationToken};
+use blitznir_core::store::{self, Chat, Message, Store, Unanswered, Unthought};
 use blitznir_core::tasks::{self, Turn};
-use blitznir_core::{Result, lock, now_stamp};
+use blitznir_core::{Error, Result, lock, now_stamp};
 use std::sync::{Arc, Mutex};
 
 pub(super) fn message(role: &str, content: &str, images: Vec<String>) -> Message {
@@ -18,8 +19,14 @@ pub(super) fn message(role: &str, content: &str, images: Vec<String>) -> Message
         content: content.into(),
         ts: now_stamp(),
         images,
+        thinking: String::new(),
+        unthought: Unthought::No,
+        unanswered: None,
     }
 }
+
+/// An answer's reasoning, handed from the job's thread to its finish.
+type Trace = Arc<Mutex<Answer>>;
 
 /// The request of a chat turn, run on the job's thread.
 fn ask(
@@ -29,21 +36,24 @@ fn ask(
     ep: Endpoint,
     model: String,
     selection: String,
+    trace: Trace,
 ) -> impl FnOnce(&Panel, &CancellationToken) -> Result<String> + Send + 'static {
     move |me: &Panel, cancel: &CancellationToken| {
-        // the new turn is stored before it is asked: a failure takes it back
+        // the new turn is stored before it is asked: unanswered, it stays marked
         for (name, shot) in &images {
             me.store.put_image(name, &shot.url)?;
         }
-        me.store.save_chat(&mut chat)?;
-        let urls: Vec<Vec<String>> = chat
-            .messages
-            .iter()
-            .map(|m| me.store.message_images(m))
-            .collect();
+        {
+            // a cancel marks the turn under this lock: the save never lands over its mark
+            let _v = lock(&me.view);
+            if cancel.is_cancelled() {
+                return Err(Error::Cancelled);
+            }
+            me.store.save_chat(&mut chat)?;
+        }
+        let urls: Vec<Vec<String>> = chat.sent().map(|m| me.store.message_images(m)).collect();
         let turns: Vec<Turn<'_>> = chat
-            .messages
-            .iter()
+            .sent()
             .zip(&urls)
             .map(|(m, images)| Turn {
                 role: &m.role,
@@ -52,8 +62,11 @@ fn ask(
             })
             .collect();
         let body = tasks::chat_body(&cfg, &model, &selection, &turns);
-        let mut on = me.deltas(cancel);
-        me.block_on(me.client.chat(&ep, body, &mut on, cancel))
+        let (mut on, mut thinking) = (me.deltas(cancel), me.thoughts(cancel));
+        let a = me.block_on(me.client.chat(&ep, body, &mut on, &mut thinking, cancel))?;
+        let text = a.text.clone();
+        *lock(&trace) = a;
+        Ok(text)
     }
 }
 
@@ -113,6 +126,9 @@ impl Panel {
             text: m.content.clone(),
             ts: m.ts.clone(),
             images: m.images.iter().filter_map(|n| self.stored(n)).collect(),
+            thinking: m.thinking.clone(),
+            unthought: m.unthought,
+            unanswered: m.unanswered.clone(),
         };
         v.ui.messages = v.chat.messages.iter().map(msg).collect();
         v.ui.chat_id.clone_from(&v.chat.id);
@@ -252,13 +268,8 @@ impl Panel {
         if v.chat.messages.is_empty() {
             v.chat.name = store::chat_title(&text);
         }
-        // unanswered, the turn leaves the chat: the history keeps it
-        let made = Arc::new(Mutex::new(Made::new("chat", "Chat", Some(text.clone()))));
-        let kept = Unfinished {
-            original: selection.clone(),
-            made,
-        };
-        let (job, cancel) = v.job.reserve(Some(kept)).ok_or(BUSY)?; // free: checked under this lock
+        // unanswered, the turn stays in its chat, marked ([`Panel::unask`])
+        let (job, cancel) = v.job.reserve(None).ok_or(BUSY)?; // free: checked under this lock
         // named now and shown from memory; written on the job's thread
         let images: Vec<(String, Shot)> = (shots.iter())
             .map(|s| (Store::image_name(), s.clone()))
@@ -269,10 +280,10 @@ impl Panel {
         let names = images.iter().map(|(n, _)| n.clone()).collect();
         v.chat.messages.push(message("user", &text, names));
         v.asked = Some(v.chat.id.clone());
-        v.pending = Some((typed, shots));
         v.ui.composer.set("");
         v.ui.images.clear();
         (v.ui.streaming, v.ui.chatting) = (Some(String::new()), true);
+        v.ui.trace.clear();
         self.sync_chat(&mut v);
         let chat = v.chat.clone();
         drop(v);
@@ -283,22 +294,26 @@ impl Panel {
             chat.messages.len()
         );
         let id = chat.id.clone();
-        let work = ask(chat, images, cfg, ep, model, selection);
+        let trace = Trace::default();
+        let work = ask(chat, images, cfg, ep, model, selection, trace.clone());
         let doing = Doing::new(Busy::Chat, "Thinking…", "Thinking…");
         self.start(job, cancel, doing, Box::new(work), move |me, out| {
-            me.answer(&id, out)
+            let a = std::mem::take(&mut *lock(&trace));
+            let mut reply = message("assistant", &out, vec![]);
+            (reply.thinking, reply.unthought) = (a.thinking, a.unthought);
+            me.answer(&id, reply);
         })
     }
 
-    /// Save the answer into chat `id`, and show that chat.
-    pub(super) fn answer(&self, id: &str, out: String) {
+    /// Save `reply` into chat `id`, and show that chat.
+    pub(super) fn answer(&self, id: &str, reply: Message) {
         let mut v = lock(&self.view);
         let mut chat = if v.chat.id == id {
             v.chat.clone()
         } else {
             self.store.chat(id).unwrap_or_default()
         };
-        chat.messages.push(message("assistant", &out, vec![]));
+        chat.messages.push(reply);
         if let Err(e) = self.store.save_chat(&mut chat) {
             log::error!("chats.json: {e}");
         }
@@ -315,10 +330,10 @@ impl Panel {
         self.tray.refresh(); // its Delete all chats counts them
     }
 
-    /// The running job ended without answering chat `asked`: take its user
-    /// turn back, in the open chat or, if another was opened meanwhile, the
-    /// stored one.
-    pub(super) fn unask(&self, v: &mut View, asked: Option<String>) {
+    /// The running job ended without answering chat `asked`: mark its user
+    /// turn `why` (a chat's), or take it back (None: a typed translation's),
+    /// in the open chat or, if another was opened meanwhile, the stored one.
+    pub(super) fn unask(&self, v: &mut View, asked: Option<String>, why: Option<Unanswered>) {
         let Some(id) = asked else { return };
         let open = v.chat.id == id;
         let mut chat = match open {
@@ -328,7 +343,16 @@ impl Panel {
                 None => return,
             },
         };
-        if let Err(e) = self.store.unask(&mut chat) {
+        let kept = match why {
+            None => self.store.unask(&mut chat),
+            Some(why) => {
+                let last = chat.messages.last_mut().filter(|m| m.role == "user");
+                last.into_iter()
+                    .for_each(|m| m.unanswered = Some(why.clone()));
+                self.store.save_chat(&mut chat)
+            }
+        };
+        if let Err(e) = kept {
             log::error!("chats.json: {e}");
         }
         if open {

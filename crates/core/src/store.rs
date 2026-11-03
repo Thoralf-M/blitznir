@@ -10,8 +10,12 @@ use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
 use std::sync::Mutex;
 
+mod data_url;
 mod history;
+mod marks;
+pub use data_url::{data_url, data_url_bytes};
 pub use history::{HistoryItem, HistoryKind, Made};
+pub use marks::{Unanswered, Unthought};
 
 /// Conversations kept on disk; the cap is the clean-up.
 pub const CHATS_MAX: usize = 50;
@@ -38,6 +42,15 @@ pub struct Message {
     /// File names in `images/`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub images: Vec<String>,
+    /// An answer's reasoning, shown folded above it.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub thinking: String,
+    /// Why the answer came without the thinking it was asked for.
+    #[serde(default, skip_serializing_if = "Unthought::is_no")]
+    pub unthought: Unthought,
+    /// A turn of the user's that got no answer: cancelled, or failed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unanswered: Option<Unanswered>,
 }
 
 /// state.json: app-owned, never edited by hand.
@@ -123,6 +136,12 @@ impl Chat {
         }
     }
 
+    /// The messages a request sends: a turn left unanswered is not one
+    /// (two user turns in a row break strict chat templates).
+    pub fn sent(&self) -> impl Iterator<Item = &Message> {
+        self.messages.iter().filter(|m| m.unanswered.is_none())
+    }
+
     /// What the chat's system prompt is about: the Recent row it was started
     /// from, else `selection`, the text selected when the panel opened.
     pub fn context<'a>(&'a self, selection: &'a str) -> &'a str {
@@ -160,52 +179,6 @@ pub fn write_atomic(path: &Path, data: &[u8]) -> std::io::Result<()> {
     f.write_all(data)?;
     f.sync_all()?;
     std::fs::rename(&tmp, path)
-}
-
-/// `bytes` as a `data:` URL: how a captured file reaches the panel and the model.
-pub fn data_url(mime: &str, bytes: &[u8]) -> String {
-    const ABC: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut out = format!("data:{mime};base64,");
-    out.reserve(bytes.len().div_ceil(3) * 4);
-    for c in bytes.chunks(3) {
-        let n = c
-            .iter()
-            .enumerate()
-            .fold(0u32, |n, (i, b)| n | u32::from(*b) << (16 - 8 * i));
-        for i in 0..4 {
-            out.push(if i <= c.len() {
-                char::from(ABC[(n >> (18 - 6 * i) & 63) as usize])
-            } else {
-                '='
-            });
-        }
-    }
-    out
-}
-
-/// The bytes of a base64 `data:` URL, as [`data_url`] writes them: how a
-/// stored image reaches the screen. None: not one.
-pub fn data_url_bytes(url: &str) -> Option<Vec<u8>> {
-    let (_, b64) = url.strip_prefix("data:")?.split_once(";base64,")?;
-    let digit = |c: u8| match c {
-        b'A'..=b'Z' => Some(c - b'A'),
-        b'a'..=b'z' => Some(c - b'a' + 26),
-        b'0'..=b'9' => Some(c - b'0' + 52),
-        b'+' => Some(62),
-        b'/' => Some(63),
-        _ => None,
-    };
-    let b64 = b64.trim_end_matches('=').as_bytes();
-    let mut out = Vec::with_capacity(b64.len() / 4 * 3 + 2);
-    for c in b64.chunks(4) {
-        let n = c
-            .iter()
-            .try_fold(0u32, |n, b| Some(n << 6 | u32::from(digit(*b)?)))?;
-        let n = n << (6 * (4 - c.len()));
-        let bytes = [(n >> 16) as u8, (n >> 8) as u8, n as u8];
-        out.extend_from_slice(&bytes[..c.len().saturating_sub(1)]);
-    }
-    Some(out)
 }
 
 /// A JSON file's value, or the default when it is missing. One that cannot
@@ -333,9 +306,10 @@ impl Store {
         Ok(gone.len())
     }
 
-    /// Take `chat`'s last turn back if it is the user's: its request failed
-    /// or was cancelled, and strict chat templates refuse two user turns in
-    /// a row. Its images go with it; a chat left empty is deleted.
+    /// Take `chat`'s last turn back if it is the user's: unanswered, it goes
+    /// back where it was typed (a turn kept in its chat is marked instead,
+    /// [`Message::unanswered`]). Its images go with it; a chat left empty is
+    /// deleted.
     pub fn unask(&self, chat: &mut Chat) -> Result<()> {
         if chat.messages.last().is_none_or(|m| m.role != "user") {
             return Ok(());
@@ -375,7 +349,8 @@ impl Store {
             .collect()
     }
 
-    fn remove_images<'a>(&self, messages: impl IntoIterator<Item = &'a Message>) {
+    /// Delete the image files of `messages`.
+    pub fn remove_images<'a>(&self, messages: impl IntoIterator<Item = &'a Message>) {
         for name in messages.into_iter().flat_map(|m| &m.images) {
             if let Some(file) = Path::new(name).file_name() {
                 let _ = std::fs::remove_file(self.paths.images().join(file));

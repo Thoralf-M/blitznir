@@ -1,7 +1,7 @@
 //! The open view's head: what is open, its Copy and Write out, and its
 //! Delete, asked once in the head itself ("Delete this dictation? Yes / No");
 //! Esc or a press elsewhere takes the question back. And a replacement's
-//! prompt, folded to three lines.
+//! prompt, folded to three lines; and the history row a chat is about.
 
 use super::icons::{self, icon, icon_button};
 use super::section::choice;
@@ -10,6 +10,7 @@ use super::style::{Look, button, head, pressable, use_palette};
 use super::tip::Tip;
 use crate::panel::Panel;
 use crate::panel::view::Ui;
+use blitznir_core::store::{HistoryItem, HistoryKind};
 use freya::prelude::*;
 use std::sync::Arc;
 
@@ -167,5 +168,75 @@ impl Component for Prompt {
             .child(head(&p, title).font_size(12.0))
             .child(body)
             .maybe_child(toggle)
+    }
+}
+
+/// The history row a chat is about, as its first turn: its head (what it
+/// is, its stamp, Copy, Write out and, while only it is read, Delete). A
+/// replacement shows the prompt it came from and the selection it
+/// replaced, muted, before the result.
+#[derive(PartialEq)]
+pub struct DictationCard {
+    pub item: HistoryItem,
+    pub deletable: bool,
+}
+
+impl Component for DictationCard {
+    fn render(&self) -> impl IntoElement {
+        let p = use_palette();
+        let h = &self.item;
+        let when = h.ts.replace('T', " ");
+        let replaced = h.kind() == HistoryKind::Replacement;
+        let delete = self.deletable.then_some(if replaced {
+            Delete {
+                ask: "Delete this replacement?",
+                tip: "Delete this replacement",
+            }
+        } else {
+            Delete {
+                ask: "Delete this dictation?",
+                tip: "Delete this dictation",
+            }
+        });
+        let top = Head {
+            title: h.what().into(),
+            note: when.get(..16).unwrap_or(&when).to_string(),
+            text: h.unanswered().is_none().then(|| h.text.clone()),
+            delete,
+            rename: false,
+        };
+        let prompt = h.prompt.clone().filter(|_| replaced).map(|text| Prompt {
+            action: h.action.clone(),
+            text,
+        });
+        let part = |title: &str, text: Selectable| {
+            rect()
+                .width(Size::fill())
+                .spacing(4.0)
+                .child(head(&p, title).font_size(13.0))
+                .child(text)
+        };
+        let before = replaced.then(|| {
+            let original = h.original.as_deref().unwrap_or("(nothing was selected)");
+            let text = Selectable::new()
+                .span(original.to_string())
+                .width(Size::fill());
+            part("Before", text.color(p.muted))
+        });
+        let text = Selectable::new().span(h.text.clone()).width(Size::fill());
+        let after: Element = if let Some(why) = h.unanswered() {
+            part("After", Selectable::new().span(why).color(p.muted)).into()
+        } else if replaced {
+            part("After", text).into()
+        } else {
+            text.into_element()
+        };
+        rect()
+            .width(Size::fill())
+            .spacing(12.0)
+            .child(top)
+            .maybe_child(prompt)
+            .maybe_child(before)
+            .child(after)
     }
 }

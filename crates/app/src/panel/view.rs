@@ -5,7 +5,7 @@
 use blitznir_core::config::Config;
 use blitznir_core::jobs::Slot;
 use blitznir_core::platform::{Bounds, Focus, Rect};
-use blitznir_core::store::{Chat, HistoryItem, State};
+use blitznir_core::store::{Chat, HistoryItem, State, Unanswered, Unthought};
 use freya::prelude::Bytes;
 use std::time::{Duration, Instant};
 
@@ -143,6 +143,11 @@ pub struct Msg {
     pub text: String,
     pub ts: String,
     pub images: Vec<Shot>,
+    /// An answer's reasoning ("" for none), and why it was left off.
+    pub thinking: String,
+    pub unthought: Unthought,
+    /// A user's turn that got no answer, and why.
+    pub unanswered: Option<Unanswered>,
 }
 
 /// One picker row; a broken endpoint is one row that says why, with no model.
@@ -212,6 +217,8 @@ pub struct Ui {
     pub preview: String,
     /// The chat answer so far, while it streams.
     pub streaming: Option<String>,
+    /// The streaming answer's reasoning so far.
+    pub trace: String,
     pub chat_id: String,
     pub chat_name: String,
     /// The model is naming the open chat.
@@ -295,7 +302,7 @@ pub struct View {
     /// button's, and how many characters a live one typed, taken back
     /// before the result is pasted.
     pub dictation: Option<(String, usize)>,
-    /// That turn's text and images: back into the composer if it fails.
+    /// A typed translation's text and images: back into the composer if it fails.
     pub pending: Option<(String, Vec<Shot>)>,
     /// Whether the band showed a chat before a Recent row was opened: Esc goes back there.
     pub before: bool,

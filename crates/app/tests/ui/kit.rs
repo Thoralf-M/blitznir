@@ -20,8 +20,12 @@ pub const LAST_LINE: &str = "That is the whole answer.";
 
 /// A panel over a fresh data dir holding `chats`.
 pub fn panel(proxy: &LaunchProxy, name: &str, chats: &[Chat]) -> Arc<Panel> {
-    let platform = Arc::new(FakePlatform::new());
-    panel_over(proxy, name, chats, platform, Config::default())
+    panel_over(proxy, name, chats, fake(), Config::default())
+}
+
+/// A fresh Fake platform, for [`panel_over`].
+pub fn fake() -> Arc<FakePlatform> {
+    Arc::new(FakePlatform::new())
 }
 
 /// [`panel`] over `platform` and `cfg`.
@@ -84,6 +88,9 @@ pub fn message(role: &str, content: String) -> Message {
         content,
         ts: "2026-10-02T12:00:00".into(),
         images: vec![],
+        thinking: String::new(),
+        unthought: blitznir_core::store::Unthought::No,
+        unanswered: None,
     }
 }
 
@@ -288,6 +295,24 @@ pub fn slow_endpoint(text: &'static str, first: Duration, every: Duration) -> St
             std::thread::sleep(every);
         }
         let _ = write!(s, "data: [DONE]\n\n");
+    })
+}
+
+/// An endpoint that streams `trace` as reasoning, a word every `every`,
+/// then answers `text`.
+pub fn thinking_endpoint(trace: &'static str, text: &'static str, every: Duration) -> String {
+    serve(move |mut s| {
+        read_request(&s);
+        let _ = write!(s, "{STREAM_HEAD}");
+        for w in trace.split(' ') {
+            // `trace` has no quote or backslash to escape
+            let delta = format!(r#"{{"choices": [{{"delta": {{"reasoning_content": "{w} "}}}}]}}"#);
+            let _ = write!(s, "data: {delta}\n\n");
+            let _ = s.flush();
+            std::thread::sleep(every);
+        }
+        let delta = format!(r#"{{"choices": [{{"delta": {{"content": "{text}"}}}}]}}"#);
+        let _ = write!(s, "data: {delta}\n\ndata: [DONE]\n\n");
     })
 }
 

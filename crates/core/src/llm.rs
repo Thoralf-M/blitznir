@@ -4,25 +4,28 @@
 //! Streaming is SSE `data:` lines. Dropping the response closes the socket,
 //! which is what makes the server stop generating, so cancel = drop.
 
+mod looping;
 pub mod release;
 mod sse;
+mod stream;
 pub mod vision;
 
 use crate::config::{Config, Endpoint};
 use crate::store::State;
 use crate::{Error, Result, tasks};
-use futures_util::StreamExt;
 use regex::Regex;
 use serde_json::Value;
-use sse::{Attempt, Line, parse_line, strip_wrappers};
+use sse::strip_wrappers;
 use std::sync::Arc;
 use std::time::Duration;
+pub use stream::Answer;
 use tokio::sync::watch;
 
 /// Never ask for more than this in one request; also the retry's budget.
 pub const MAX_TOKENS_CEILING: usize = 8192;
 
-/// Called with the unwrapped answer so far.
+/// Called with the unwrapped answer so far; for a chat's thinking, with
+/// the reasoning so far.
 pub type OnDelta<'a> = dyn FnMut(&str) + Send + 'a;
 
 /// What an answer goes through as it streams: [`strip_wrappers`] for a
@@ -178,104 +181,24 @@ impl Client {
         on_delta: &mut OnDelta<'_>,
         cancel: &CancellationToken,
     ) -> Result<String> {
-        self.answer(ep, body, (on_delta, strip_wrappers), cancel)
-            .await
+        let quiet = &mut |_: &str| {};
+        let a = self.answer(ep, body, (on_delta, quiet, strip_wrappers), cancel);
+        Ok(a.await?.text)
     }
 
     /// [`Client::stream`] for a chat: its markdown as written, a code block
-    /// that opens or closes the answer included.
+    /// that opens or closes the answer included, and the reasoning behind
+    /// it, streamed to `on_thinking` as it comes.
     pub async fn chat(
         &self,
         ep: &Endpoint,
         body: Value,
         on_delta: &mut OnDelta<'_>,
+        on_thinking: &mut OnDelta<'_>,
         cancel: &CancellationToken,
-    ) -> Result<String> {
-        self.answer(ep, body, (on_delta, str::to_owned), cancel)
-            .await
-    }
-
-    /// Stream one chat completion; only a whole answer is Ok. Retries ONCE
-    /// with the ceiling as budget when the tokens ran out (cut off, or
-    /// reasoned without answering): retrying beats losing the user's rewrite.
-    async fn answer(
-        &self,
-        ep: &Endpoint,
-        body: Value,
-        (on_delta, unwrap): (&mut OnDelta<'_>, Unwrap),
-        cancel: &CancellationToken,
-    ) -> Result<String> {
-        let mut body = portable(&ep.url, body);
-        body["stream"] = true.into();
-        let mut a = self.attempt(ep, &body, (on_delta, unwrap), cancel).await?;
-        let mut budget = body["max_tokens"].as_u64().unwrap_or(0) as usize;
-        if a.starved() && budget < MAX_TOKENS_CEILING {
-            log::warn!(
-                "out of tokens at max_tokens={budget} ({} chars of reasoning) — retrying with max_tokens={MAX_TOKENS_CEILING}",
-                a.reasoning
-            );
-            budget = MAX_TOKENS_CEILING;
-            body["max_tokens"] = budget.into();
-            a = self.attempt(ep, &body, (on_delta, unwrap), cancel).await?;
-        }
-        let asked = body["chat_template_kwargs"]["enable_thinking"] == true;
-        a.answer(budget, asked)
-    }
-
-    /// One request, read to its end.
-    async fn attempt(
-        &self,
-        ep: &Endpoint,
-        body: &Value,
-        (on_delta, unwrap): (&mut OnDelta<'_>, Unwrap),
-        cancel: &CancellationToken,
-    ) -> Result<Attempt> {
-        let send = self
-            .request(reqwest::Method::POST, ep, "chat/completions")
-            .json(body)
-            .send();
-        let resp = tokio::select! {
-            () = cancel.cancelled() => return Err(Error::Cancelled),
-            r = send => check(r.map_err(|e| unreachable(ep, e))?).await?,
-        };
-        let mut bytes = resp.bytes_stream();
-        let (mut buf, mut content, mut reasoning) = (Vec::new(), String::new(), 0);
-        let mut finish: Option<String> = None;
-        let ended = 'read: loop {
-            let chunk = tokio::select! {
-                () = cancel.cancelled() => return Err(Error::Cancelled), // drops the connection
-                c = bytes.next() => c,
-            };
-            let Some(chunk) = chunk else {
-                break sse::ended(finish.as_deref(), false);
-            };
-            buf.extend_from_slice(&chunk?);
-            while let Some(nl) = buf.iter().position(|b| *b == b'\n') {
-                let line: Vec<u8> = buf.drain(..=nl).collect();
-                match parse_line(&String::from_utf8_lossy(&line)) {
-                    Line::Skip => {}
-                    Line::Done => break 'read sse::ended(finish.as_deref(), true),
-                    Line::Failed(msg) => break 'read sse::Ended::Broken(msg),
-                    Line::Delta {
-                        content: c,
-                        reasoning: r,
-                        finish: f,
-                    } => {
-                        content.push_str(&c);
-                        reasoning += r;
-                        finish = f.or(finish);
-                        if !c.is_empty() {
-                            on_delta(&unwrap(&content));
-                        }
-                    }
-                }
-            }
-        };
-        Ok(Attempt {
-            content: unwrap(&content),
-            reasoning,
-            ended,
-        })
+    ) -> Result<Answer> {
+        let calls = (on_delta, on_thinking, str::to_owned as Unwrap);
+        self.answer(ep, body, calls, cancel).await
     }
 
     /// Translate: ask which language `text` is in, then translate in that direction.

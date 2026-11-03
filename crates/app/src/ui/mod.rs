@@ -20,6 +20,7 @@ mod header;
 mod icons;
 mod keys;
 mod opened;
+mod reasoning;
 pub mod revert;
 mod section;
 mod select;

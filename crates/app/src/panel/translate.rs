@@ -28,6 +28,7 @@ impl Panel {
         v.pending = Some((text.clone(), vec![])); // back in the field on Esc
         v.ui.composer.set("");
         (v.ui.streaming, v.ui.chatting, v.ui.settings) = (Some(String::new()), true, false);
+        v.ui.trace.clear();
         self.sync_chat(&mut v);
         let id = v.chat.id.clone();
         drop(v);
@@ -41,7 +42,7 @@ impl Panel {
         // streamed as a chat answer is (Busy::Chat): the thinking wave, the text
         let doing = Doing::new(Busy::Chat, "Translating…", "Translating…");
         self.start(job, cancel, doing, Box::new(work), move |me, out| {
-            me.answer(&id, out)
+            me.answer(&id, message("assistant", &out, vec![]));
         })
     }
 }

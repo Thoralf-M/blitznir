@@ -121,7 +121,3 @@ pub fn the_thinking_wave_shows_while_an_answer_streams(proxy: &LaunchProxy) {
         assert_eq!(after, 1, "{name}: nothing once the answer is in");
     }
 }
-
-fn fake() -> Arc<blitznir_core::platform::fake::FakePlatform> {
-    Arc::new(blitznir_core::platform::fake::FakePlatform::new())
-}
