@@ -1,8 +1,10 @@
 //! The open view's head: what is open, its Copy and Write out, and its
 //! Delete, asked once in the head itself ("Delete this dictation? Yes / No");
 //! Esc or a press elsewhere takes the question back. And a replacement's
-//! prompt, folded to three lines; and the history row a chat is about.
+//! prompt, folded to three lines; and the history row a chat is about, its
+//! Before and After on the chat's one selection.
 
+use super::answer::Body;
 use super::icons::{self, icon, icon_button};
 use super::section::choice;
 use super::select::Selectable;
@@ -10,6 +12,8 @@ use super::style::{Look, button, head, pressable, use_palette};
 use super::tip::Tip;
 use crate::panel::Panel;
 use crate::panel::view::Ui;
+use blitznir_core::markdown::Block;
+use blitznir_core::markdown::select;
 use blitznir_core::store::{HistoryItem, HistoryKind};
 use freya::prelude::*;
 use std::sync::Arc;
@@ -144,6 +148,7 @@ impl Component for Prompt {
         let body = Selectable::new()
             .span(self.text.clone())
             .width(Size::fill())
+            .in_band()
             .font_family("monospace") // Menlo on macOS: daemon.rs registers it
             .font_size(12.0)
             .color(p.muted)
@@ -171,19 +176,62 @@ impl Component for Prompt {
     }
 }
 
+/// One part of a history row as the card shows it: a heading ("Before",
+/// "After") or a text. They are pieces of the chat's selection, so one drag
+/// runs from the Before through the After into the chat below.
+pub struct Part {
+    pub text: String,
+    pub heading: bool,
+    pub muted: bool,
+}
+
+impl Part {
+    /// Its pieces' blocks: a heading as bold markdown, a text literal.
+    pub fn blocks(&self) -> Vec<Block> {
+        select::message(&self.text, self.heading)
+    }
+}
+
+/// `h`'s parts, in order: a replacement's Before, muted, then its After.
+pub fn parts(h: &HistoryItem) -> Vec<Part> {
+    let heading = |t: &str| Part {
+        text: format!("**{t}**"),
+        heading: true,
+        muted: true,
+    };
+    let text = |text, muted| Part {
+        text,
+        heading: false,
+        muted,
+    };
+    let replaced = h.kind() == HistoryKind::Replacement;
+    let mut out = vec![];
+    if replaced {
+        let original = h.original.as_deref().unwrap_or("(nothing was selected)");
+        out.extend([heading("Before"), text(original.to_string(), true)]);
+    }
+    match h.unanswered() {
+        Some(why) => out.extend([heading("After"), text(why, true)]),
+        None if replaced => out.extend([heading("After"), text(h.text.clone(), false)]),
+        None => out.push(text(h.text.clone(), false)),
+    }
+    out
+}
+
 /// The history row a chat is about, as its first turn: its head (what it
 /// is, its stamp, Copy, Write out and, while only it is read, Delete). A
 /// replacement shows the prompt it came from and the selection it
-/// replaced, muted, before the result.
+/// replaced, muted, before the result. Its parts are pieces of the chat's
+/// selection from `base` on.
 #[derive(PartialEq)]
 pub struct DictationCard {
     pub item: HistoryItem,
     pub deletable: bool,
+    pub base: usize,
 }
 
 impl Component for DictationCard {
     fn render(&self) -> impl IntoElement {
-        let p = use_palette();
         let h = &self.item;
         let when = h.ts.replace('T', " ");
         let replaced = h.kind() == HistoryKind::Replacement;
@@ -209,34 +257,33 @@ impl Component for DictationCard {
             action: h.action.clone(),
             text,
         });
-        let part = |title: &str, text: Selectable| {
-            rect()
-                .width(Size::fill())
-                .spacing(4.0)
-                .child(head(&p, title).font_size(13.0))
-                .child(text)
-        };
-        let before = replaced.then(|| {
-            let original = h.original.as_deref().unwrap_or("(nothing was selected)");
-            let text = Selectable::new()
-                .span(original.to_string())
-                .width(Size::fill());
-            part("Before", text.color(p.muted))
-        });
-        let text = Selectable::new().span(h.text.clone()).width(Size::fill());
-        let after: Element = if let Some(why) = h.unanswered() {
-            part("After", Selectable::new().span(why).color(p.muted)).into()
-        } else if replaced {
-            part("After", text).into()
-        } else {
-            text.into_element()
-        };
+        // a heading and its text, close together
+        let mut groups: Vec<Vec<Element>> = vec![];
+        let mut base = self.base;
+        for part in parts(h) {
+            let n = select::pieces(&part.blocks()).len();
+            if part.heading || groups.is_empty() {
+                groups.push(vec![]);
+            }
+            let body = Body {
+                text: part.text,
+                markdown: part.heading,
+                base,
+                muted: part.muted,
+            };
+            base += n;
+            if let Some(g) = groups.last_mut() {
+                g.push(body.into_element());
+            }
+        }
+        let groups = groups
+            .into_iter()
+            .map(|g| rect().width(Size::fill()).spacing(4.0).children(g).into());
         rect()
             .width(Size::fill())
             .spacing(12.0)
             .child(top)
             .maybe_child(prompt)
-            .maybe_child(before)
-            .child(after)
+            .children(groups.collect::<Vec<Element>>())
     }
 }

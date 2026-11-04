@@ -105,7 +105,7 @@ pub fn a_long_title_leaves_the_head_its_delete(proxy: &LaunchProxy) {
 }
 
 /// ⌘ and `key`, as the keyboard sends it.
-fn command(t: &mut TestingRunner, key: &str) {
+pub fn command(t: &mut TestingRunner, key: &str) {
     let modifiers = if cfg!(target_os = "macos") {
         Modifiers::META
     } else {

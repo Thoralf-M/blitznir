@@ -80,7 +80,7 @@ impl Component for Reasoning {
                 .height(Size::auto())
                 .max_height(Size::px(BOX_MAX))
                 .drag_scrolling(false)
-                .on_sized(move |e: Event<SizedEventData>| framed.viewport(e.area.height()))
+                .on_sized(move |e: Event<SizedEventData>| framed.viewport(e.area))
                 .child(lines);
             rect()
                 .width(Size::fill())

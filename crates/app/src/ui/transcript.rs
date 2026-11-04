@@ -5,13 +5,13 @@
 use super::answer::{Body, use_selection};
 use super::follow::use_follow;
 use super::icons::{self, icon_button};
-use super::opened::{Delete, DictationCard, Head};
+use super::opened::{self, Delete, DictationCard, Head};
 use super::reasoning::{Live, Reasoning, use_live};
 use super::section::choice;
 use super::select::Selectable;
 use super::style::{Look, Palette, head, use_palette};
 use super::thinking::{Thinking, Wave, use_wave};
-use super::thumbs::thumbs;
+use super::thumbs::{Shown, thumbs};
 use crate::panel::Panel;
 use crate::panel::view::{self, Msg, RET, Ui};
 use blitznir_core::markdown::select::{self, Piece};
@@ -43,6 +43,7 @@ impl Component for MessageCard {
     fn render(&self) -> impl IntoElement {
         let p = use_palette();
         let panel = use_consume::<Arc<Panel>>();
+        let shown = use_consume::<Shown>();
         let m = &self.msg;
         let user = m.role == "user";
         let (copy, text) = (panel.clone(), m.text.clone());
@@ -71,6 +72,7 @@ impl Component for MessageCard {
             text: m.text.clone(),
             markdown: !user,
             base: self.base,
+            muted: false,
         };
         let thinking = (!user && !m.thinking.is_empty()).then(|| Reasoning {
             text: m.thinking.clone(),
@@ -80,8 +82,11 @@ impl Component for MessageCard {
         let again = self.index;
         let unanswered = m.unanswered.as_ref().map(|why| {
             let resend = again_panel.clone();
+            // a narrow card puts the button under the note, whole
             rect()
+                .width(Size::fill())
                 .horizontal()
+                .content(Content::wrap())
                 .cross_align(Alignment::Center)
                 .spacing(6.0)
                 .child(label().text(why.says()).font_size(12.0).color(p.muted))
@@ -94,7 +99,7 @@ impl Component for MessageCard {
             .spacing(4.0)
             .child(meta)
             .maybe_child(thinking)
-            .maybe_child(thumbs(&p, &m.images, None))
+            .maybe_child(thumbs(&p, &m.images, None, shown))
             .child(body)
             .maybe_child(unanswered)
             .maybe_child(self.wave.then_some(Thinking { base: self.base }))
@@ -117,7 +122,11 @@ fn selection(p: &Palette, ui: &Ui) -> Vec<Element> {
             let n = s.chars().count();
             vec![
                 head(p, format!("Selected text · {n} characters · {where_}")).into(),
-                Selectable::new().span(s.clone()).width(Size::fill()).into_element(),
+                Selectable::new()
+                    .span(s.clone())
+                    .width(Size::fill())
+                    .in_band()
+                    .into_element(),
             ]
         }
         Some(_) => vec![
@@ -141,6 +150,7 @@ fn selection(p: &Palette, ui: &Ui) -> Vec<Element> {
             Selectable::new()
                 .span(ui.preview.clone())
                 .width(Size::fill())
+                .in_band()
                 .into_element(),
         );
     }
@@ -158,6 +168,18 @@ fn chat(
 ) -> (Vec<Element>, Vec<Piece>) {
     let mut pieces = vec![];
     let mut out: Vec<Element> = vec![];
+    // the row it is about first: its parts are the selection's first pieces
+    let card = ui.about.as_ref().map(|item| {
+        let card = DictationCard {
+            item: item.clone(),
+            deletable: view::viewing(ui),
+            base: 0,
+        };
+        for part in opened::parts(item) {
+            pieces.extend(select::pieces(&part.blocks()));
+        }
+        card
+    });
     let n = ui.messages.len();
     for (i, m) in ui.messages.iter().enumerate() {
         let base = pieces.len();
@@ -171,12 +193,7 @@ fn chat(
         };
         out.push(rect().key(i).width(Size::fill()).child(card).into());
     }
-    if let Some(item) = &ui.about {
-        let deletable = view::viewing(ui);
-        let card = DictationCard {
-            item: item.clone(),
-            deletable,
-        };
+    if let Some(card) = card {
         out.insert(
             0,
             rect()
@@ -250,6 +267,7 @@ fn streaming(
             text: text.to_string(),
             markdown: true,
             base,
+            muted: false,
         }
         .into_element()
     };
@@ -301,7 +319,7 @@ impl Component for Band {
         chosen.set_pieces(pieces);
         let (grown, framed, keys) = (follow.clone(), follow.clone(), follow.clone());
         let grown = move |e: Event<SizedEventData>| grown.content(e.area.height(), open.as_deref());
-        let framed = move |e: Event<SizedEventData>| framed.viewport(e.area.height());
+        let framed = move |e: Event<SizedEventData>| framed.viewport(e.area);
         let (c, down) = (chosen.clone(), chosen.clone());
         let keys = move |e: Event<KeyboardEventData>| {
             if c.key(&e, &panel) || keys.key(&e) {
@@ -311,12 +329,17 @@ impl Component for Band {
         // a press starts the chat's selection and focuses the transcript,
         // so ⌘C and the scroll keys reach it; the selection view's text is
         // Selectable, which keeps its press to itself
+        let scroll = follow.controller();
+        let (edge, dragged, let_go) = (follow.clone(), follow.clone(), follow);
         let click = move |e: Event<PointerEventData>| {
             down.down(&e);
+            if e.data().is_primary() {
+                edge.pressed(e.global_location().y as f32);
+            }
             focus.request_focus();
         };
         let (moved, released, anywhere) = (chosen.clone(), chosen.clone(), chosen);
-        ScrollView::new_controlled(follow.controller())
+        ScrollView::new_controlled(scroll)
             .width(Size::fill())
             .height(Size::flex(1.0))
             .on_sized(framed)
@@ -330,8 +353,14 @@ impl Component for Band {
                     .on_sized(grown)
                     .on_key_down(keys)
                     .on_pointer_down(click)
-                    .on_global_pointer_move(move |e| moved.moved(&e))
-                    .on_global_pointer_up(move |_| released.released())
+                    .on_global_pointer_move(move |e: Event<PointerEventData>| {
+                        dragged.dragged(e.global_location().y as f32);
+                        moved.moved(&e);
+                    })
+                    .on_global_pointer_up(move |_| {
+                        let_go.released();
+                        released.released();
+                    })
                     .on_global_pointer_down(move |_| anywhere.clear())
                     .children(items),
             )

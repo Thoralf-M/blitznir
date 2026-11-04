@@ -7,6 +7,7 @@
 
 use super::icons::{self, icon_button};
 use super::keys::command;
+use super::spans::span;
 use super::style::{Palette, use_palette};
 use crate::panel::Panel;
 use blitznir_core::markdown::select::{self, Piece, Point, len16, range_in};
@@ -17,43 +18,8 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::Arc;
 
-const SIZE: f32 = 13.0;
+pub(super) const SIZE: f32 = 13.0;
 const CODE_SIZE: f32 = 12.0;
-
-fn heading_size(level: u8) -> f32 {
-    match level {
-        1 => 20.0,
-        2 => 18.0,
-        3 => 16.0,
-        4 => 14.0,
-        _ => SIZE,
-    }
-}
-
-fn span(p: &Palette, r: &Run) -> Span<'static> {
-    let s = &r.style;
-    let mut span = Span::new(r.text.clone()).color(if s.link.is_some() { p.accent } else { p.fg });
-    if s.heading > 0 {
-        span = span
-            .font_size(heading_size(s.heading))
-            .font_weight(FontWeight::BOLD);
-    }
-    if s.bold {
-        span = span.font_weight(FontWeight::BOLD);
-    }
-    if s.italic {
-        span = span.font_slant(FontSlant::Italic);
-    }
-    if s.strike {
-        span = span.text_decoration(TextDecoration::LineThrough);
-    } else if s.link.is_some() {
-        span = span.text_decoration(TextDecoration::Underline);
-    }
-    if s.code {
-        span = span.font_family("monospace").color(p.accent);
-    }
-    span
-}
 
 /// Where a piece of the answer was laid out, for hit-testing a drag.
 #[derive(Default)]
@@ -100,6 +66,8 @@ struct Pieces<'a> {
     lens: &'a [usize],
     sel: Option<(Point, Point)>,
     next: Cell<usize>,
+    /// The text's colour: muted for what a replacement replaced.
+    fg: Color,
 }
 
 impl Pieces<'_> {
@@ -124,9 +92,9 @@ impl Pieces<'_> {
     /// `runs` as one paragraph, an open button after each link.
     fn text(&self, runs: &[Run]) -> Paragraph {
         let p = self.p;
-        let mut t = self.paragraph().font_size(SIZE).color(p.fg);
+        let mut t = self.paragraph().font_size(SIZE).color(self.fg);
         for (i, r) in runs.iter().enumerate() {
-            t = t.span(span(p, r));
+            t = t.span(span(p, r, self.fg));
             let Some(url) = &r.style.link else { continue };
             if runs.get(i + 1).and_then(|n| n.style.link.as_ref()) == Some(url) {
                 continue; // the link goes on: its button comes after its last run
@@ -146,7 +114,7 @@ impl Pieces<'_> {
             .span(Span::new(code.to_string()))
             .font_family("monospace") // Menlo on macOS: daemon.rs registers it
             .font_size(CODE_SIZE)
-            .color(self.p.fg);
+            .color(self.fg);
         rect()
             .width(Size::fill())
             .padding((8.0, 10.0))
@@ -374,6 +342,7 @@ pub struct Body {
     pub text: String,
     pub markdown: bool,
     pub base: usize,
+    pub muted: bool,
 }
 
 impl Component for Body {
@@ -389,6 +358,7 @@ impl Component for Body {
             lens: &lens,
             sel: (s.sel)(),
             next: Cell::new(self.base),
+            fg: if self.muted { p.muted } else { p.fg },
         };
         let blocks = select::message(&self.text, self.markdown);
         rect().width(Size::fill()).spacing(10.0).children(

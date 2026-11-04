@@ -4,14 +4,23 @@
 //! trackpad, scrollbar drag or key that moved away leaves it where it is.
 //! Another chat (or entering one) starts at its bottom. Freya reports a size
 //! on every layout, a scroll's too: only a changed one counts, or a slow
-//! scroll up near the bottom is pulled back down at every step.
+//! scroll up near the bottom is pulled back down at every step. A selecting
+//! drag past its top or bottom edge scrolls the text that way.
 
 use freya::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::time::Duration;
 
 /// How far above the bottom still counts as at the bottom, in pixels.
 const SLACK: f32 = 40.0;
+
+/// A drag scrolls a pixel a frame per this many pixels past the edge, up
+/// to [`DRAG_MAX`]: a browser's pace, slow at the edge, a page a second
+/// at 80 px out.
+const DRAG_PER: f32 = 4.0;
+const DRAG_MAX: f32 = 40.0;
+const FRAME: Duration = Duration::from_millis(16);
 
 #[derive(Default)]
 struct Seen {
@@ -23,6 +32,10 @@ struct Seen {
     going: bool,
     /// The next change of size is a fold opened or closed ([`Follow::hold`]).
     held: bool,
+    /// The view's top and bottom edge in the window.
+    edges: (f32, f32),
+    /// The pointer's height in the window while a selecting drag runs.
+    drag: Option<f32>,
 }
 
 /// Sizes come in logical pixels, divided from physical ones.
@@ -34,12 +47,15 @@ fn same(a: f32, b: f32) -> bool {
 pub struct Follow {
     scroll: ScrollController,
     seen: Rc<RefCell<Seen>>,
+    /// The drag's frames, scrolling past an edge.
+    edge: Rc<RefCell<Option<TaskHandle>>>,
 }
 
 pub fn use_follow() -> Follow {
     let scroll = use_scroll_controller(ScrollConfig::default);
     let seen = use_hook(|| Rc::new(RefCell::new(Seen::default())));
-    Follow { scroll, seen }
+    let edge = use_hook(|| Rc::new(RefCell::new(None)));
+    Follow { scroll, seen, edge }
 }
 
 impl Follow {
@@ -75,9 +91,11 @@ impl Follow {
         self.seen.borrow_mut().held = true;
     }
 
-    /// The window around the text laid out at `height`.
-    pub fn viewport(&self, height: f32) {
+    /// The window around the text, laid out at `area`.
+    pub fn viewport(&self, area: Area) {
         let mut s = self.seen.borrow_mut();
+        s.edges = (area.min_y(), area.max_y());
+        let height = area.height();
         if same(s.viewport, height) {
             return;
         }
@@ -98,6 +116,39 @@ impl Follow {
         });
     }
 
+    /// A selecting drag starts at `y`: until [`Follow::released`], each
+    /// frame with the pointer past an edge scrolls the text that way; the
+    /// selection's end follows the text moving under it.
+    pub fn pressed(&self, y: f32) {
+        self.seen.borrow_mut().drag = Some(y);
+        let (seen, scroll) = (self.seen.clone(), self.scroll);
+        let task = spawn(async move {
+            loop {
+                let Some(step) = past_edge(&seen.borrow()) else {
+                    return;
+                };
+                let (_, y): (i32, i32) = scroll.into();
+                let mut scroll = scroll;
+                scroll.scroll_to_y(y - step);
+                timer(FRAME).await;
+            }
+        });
+        if let Some(old) = self.edge.replace(Some(task)) {
+            old.cancel();
+        }
+    }
+
+    pub fn dragged(&self, y: f32) {
+        let mut s = self.seen.borrow_mut();
+        if s.drag.is_some() {
+            s.drag = Some(y);
+        }
+    }
+
+    pub fn released(&self) {
+        self.seen.borrow_mut().drag = None;
+    }
+
     /// PageUp/PageDown by a page, Home/End to the ends; the arrows are the
     /// scroll view's. True when the key was taken.
     pub fn key(&self, e: &Event<KeyboardEventData>) -> bool {
@@ -116,4 +167,23 @@ impl Follow {
         };
         true
     }
+}
+
+/// The drag's scroll this frame, down positive; None once it ended.
+fn past_edge(s: &Seen) -> Option<i32> {
+    let y = s.drag?;
+    let (top, bottom) = s.edges;
+    let past = if y < top {
+        y - top
+    } else if y > bottom {
+        y - bottom
+    } else {
+        0.0
+    };
+    let step = (past / DRAG_PER).clamp(-DRAG_MAX, DRAG_MAX);
+    Some(if past != 0.0 && step.abs() < 1.0 {
+        step.signum()
+    } else {
+        step
+    } as i32)
 }

@@ -7,7 +7,7 @@ use super::icons::{self, icon, icon_button, icon_button_if};
 use super::keys::{command, field_keys};
 use super::select::Selectable;
 use super::style::{Look, Palette, button_if, pressable, use_palette};
-use super::thumbs::thumbs;
+use super::thumbs::{Shown, thumbs};
 use super::tip::Tip;
 use crate::panel::Panel;
 use crate::panel::view::{self, MOD, RET, Strip, Tone, Ui, View};
@@ -308,7 +308,8 @@ impl Component for Composer {
             .color(p.fg)
             .placeholder_color(p.muted)
             .on_pre_key_down(keys(panel.clone()));
-        let attached = thumbs(&p, &ui.images, Some(&panel)).map(|t| {
+        let large = use_consume::<Shown>();
+        let attached = thumbs(&p, &ui.images, Some(&panel), large).map(|t| {
             rect()
                 .width(Size::fill())
                 .padding((8.0, 10.0, 0.0, 10.0))

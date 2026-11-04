@@ -31,25 +31,43 @@ mod select;
 mod suggest;
 #[path = "ui/thinking.rs"]
 mod thinking;
+#[path = "ui/view.rs"]
+mod view;
 
 use blitznir_app::ui;
 use blitznir_core::platform::fake::FakePlatform;
 use blitznir_core::store::State;
-use freya::elements::paragraph::ParagraphElement;
 use freya::prelude::{LaunchProxy, NativeEvent, Size2D};
 use freya::winit::event_loop::EventLoop;
 use freya_testing::prelude::*;
 use kit::*;
 use std::sync::Arc;
 
-/// Over the transcript, right of the sidebar.
-const TRANSCRIPT: (f64, f64) = (500.0, 250.0);
-
 /// A test: its name, and its body over the shared proxy.
 type Test = (&'static str, fn(&LaunchProxy));
 
 /// Every test, run in this order on the one proxy.
-const TESTS: [Test; 64] = [
+const TESTS: [Test; 69] = [
+    (
+        "a_drag_selects_a_replacements_before_and_after",
+        view::a_drag_selects_a_replacements_before_and_after,
+    ),
+    (
+        "a_drag_in_shown_text_past_the_bottom_scrolls_and_selects_on",
+        view::a_drag_in_shown_text_past_the_bottom_scrolls_and_selects_on,
+    ),
+    (
+        "a_drag_past_the_bottom_scrolls_and_selects_on",
+        view::a_drag_past_the_bottom_scrolls_and_selects_on,
+    ),
+    (
+        "a_pressed_image_shows_large",
+        view::a_pressed_image_shows_large,
+    ),
+    (
+        "send_again_wraps_under_its_note",
+        view::send_again_wraps_under_its_note,
+    ),
     (
         "the_dictation_wave_shows_under_the_composer",
         dictation::the_dictation_wave_shows_under_the_composer,
@@ -92,7 +110,7 @@ const TESTS: [Test; 64] = [
     ),
     (
         "a_slow_scroll_up_near_the_bottom_stays_where_it_went",
-        a_slow_scroll_up_near_the_bottom_stays_where_it_went,
+        view::a_slow_scroll_up_near_the_bottom_stays_where_it_went,
     ),
     (
         "a_settings_help_text_can_be_selected",
@@ -316,41 +334,6 @@ fn main() {
         println!("test {name} ... ok");
     }
     println!("ui: {} passed", TESTS.len());
-}
-
-/// Where the answer's last line is, in the window.
-fn last_line_y(t: &TestingRunner) -> f32 {
-    let has_it = |p: &ParagraphElement| p.spans.iter().any(|s| s.text.contains(LAST_LINE));
-    t.find(|node, element| {
-        Paragraph::try_downcast(element)
-            .filter(has_it)
-            .map(|_| node.layout().area.min_y())
-    })
-    .expect("the answer's last line is laid out")
-}
-
-/// The transcript keeps to its bottom while an answer streams in; that hold
-/// must not pull back a reader who scrolls up from it in small steps.
-fn a_slow_scroll_up_near_the_bottom_stays_where_it_went(proxy: &LaunchProxy) {
-    let chat = long_chat();
-    let panel = panel(proxy, "scroll", std::slice::from_ref(&chat));
-    panel.open_chat(&chat.id);
-    let app = move || ui::app(panel.clone());
-    let (mut t, ()) = TestingRunner::new(app, Size2D::new(WINDOW.0, WINDOW.1), |_| {}, 1.0);
-    settle(&mut t);
-    shot(&mut t, "scroll-bottom");
-    let bottom = last_line_y(&t);
-    assert!(bottom < WINDOW.1, "a chat opens at its bottom: {bottom}");
-    for _ in 0..10 {
-        t.scroll(TRANSCRIPT, (0.0, 8.0));
-        settle(&mut t);
-    }
-    shot(&mut t, "scroll-up");
-    let moved = last_line_y(&t) - bottom;
-    assert!(
-        moved >= 70.0,
-        "10 steps of 8 px up moved the text {moved} px"
-    );
 }
 
 /// A field's help in the Settings form is text to copy, not a picture of it:

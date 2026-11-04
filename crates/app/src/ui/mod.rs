@@ -26,6 +26,7 @@ mod section;
 mod select;
 mod settings;
 mod sidebar;
+mod spans;
 mod splitter;
 mod style;
 mod thinking;
@@ -169,11 +170,12 @@ fn use_focus_follows(ui: State<Ui>, composer: AccessibilityId, editor: Accessibi
 /// The window's own keys, whichever field has the focus.
 fn window_keys(
     keys: Arc<Panel>,
-    mut picking: State<bool>,
+    (mut picking, thumbs::Shown(mut shown)): (State<bool>, thumbs::Shown),
     ui: State<Ui>,
     (nav, mut peek): (form_nav::FormNav, State<bool>),
 ) -> impl FnMut(Event<KeyboardEventData>) + 'static {
     move |e: Event<KeyboardEventData>| match &e.key {
+        Key::Named(NamedKey::Escape) if shown.peek().is_some() => shown.set(None),
         Key::Named(NamedKey::Escape) if picking() => picking.set(false),
         Key::Named(NamedKey::Escape) => keys.escape(),
         Key::Character(c) if command(e.modifiers) && c == "," => keys.show_settings(true),
@@ -231,6 +233,23 @@ fn use_desktop_theme(panel: &Arc<Panel>) {
     });
 }
 
+/// What shows over the window, for Esc to close first: the model picker,
+/// an image shown large (gone with the panel or its chat).
+fn use_over(ui: State<Ui>) -> (State<bool>, thumbs::Shown) {
+    let picking = use_state(|| false);
+    use_provide_context(|| header::PickerOpen(picking));
+    let mut large = use_state(|| None);
+    let seen = use_hook(|| Rc::new(std::cell::RefCell::new(None)));
+    use_side_effect(move || {
+        let u = ui.read();
+        let now = Some((u.shown, u.chatting.then(|| u.chat_id.clone())));
+        if seen.replace(now.clone()) != now && large.peek().is_some() {
+            large.set(None);
+        }
+    });
+    (picking, use_provide_context(|| thumbs::Shown(large)))
+}
+
 pub fn app(panel: Arc<Panel>) -> impl IntoElement {
     let panel = use_provide_context(|| panel);
     let ui = use_bridge(&panel);
@@ -241,8 +260,7 @@ pub fn app(panel: Arc<Panel>) -> impl IntoElement {
     let fields = use_fields(&panel, ui, theme);
     let (composer_id, editor_id) = (use_a11y(), use_a11y());
     use_focus_follows(ui, composer_id, editor_id);
-    let picking = use_state(|| false);
-    use_provide_context(|| header::PickerOpen(picking));
+    let (picking, shown) = use_over(ui);
     let mut peek = use_state(|| false);
     let drag = use_state(|| None::<f32>);
     let nav = form_nav::use_form_nav(fields.editor);
@@ -253,7 +271,7 @@ pub fn app(panel: Arc<Panel>) -> impl IntoElement {
             peek.set_if_modified(false);
         }
     });
-    let on_key = window_keys(panel.clone(), picking, ui, (nav.clone(), peek));
+    let on_key = window_keys(panel.clone(), (picking, shown), ui, (nav.clone(), peek));
     let p = Palette::of(&theme.read());
     let u = ui.read();
     let side = if width < NARROW { peek() } else { !u.folded };
@@ -315,4 +333,5 @@ pub fn app(panel: Arc<Panel>) -> impl IntoElement {
         .child(header::Header)
         .child(rule(Size::fill(), Size::px(1.0)))
         .child(body)
+        .maybe_child(thumbs::shown_large(shown))
 }

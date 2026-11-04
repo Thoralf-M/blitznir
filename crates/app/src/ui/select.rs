@@ -1,10 +1,16 @@
 //! Text to select and copy, as Freya's SelectableText (v0.5.0-rc.9,
 //! freya-components/src/selectable_text.rs) but with the I-beam only over
 //! the glyphs: a text that fills its row takes a press beside a short line,
-//! and the pointer there stays an arrow, as in a browser.
+//! and the pointer there stays an arrow, as in a browser. In the band
+//! ([`Selectable::in_band`]), a drag past its edge scrolls it
+//! ([`Follow::pressed`]) and the selection follows the text moving under a
+//! still pointer.
 
+use super::follow::Follow;
 use freya::prelude::*;
 use freya::text_edit::*;
+use std::cell::Cell;
+use std::rc::Rc;
 
 #[derive(Clone, PartialEq)]
 pub struct Selectable {
@@ -15,6 +21,7 @@ pub struct Selectable {
     event_handlers: EventHandlers,
     layer: Layer,
     max_lines: Option<usize>,
+    in_band: bool,
     key: DiffKey,
 }
 
@@ -66,12 +73,21 @@ impl Selectable {
             event_handlers: EventHandlers::default(),
             layer: Layer::default(),
             max_lines: None,
+            in_band: false,
             key: DiffKey::None,
         }
     }
 
     pub fn span(mut self, span: impl Into<Span<'static>>) -> Self {
         self.spans.push(span.into());
+        self
+    }
+
+    /// Text in the band's own scroll: a drag past its edge scrolls it.
+    /// Not in a box with a scroll of its own (a trace): its size reports
+    /// shifted that box's hold on its newest line.
+    pub fn in_band(mut self) -> Self {
+        self.in_band = true;
         self
     }
 
@@ -166,6 +182,90 @@ fn hover(
     })
 }
 
+/// A press, its drag and its end: the selection's end under the pointer,
+/// also as a scroll moves the text under a still one; in the band, a drag
+/// past its edge scrolls it.
+fn drag(
+    p: Paragraph,
+    mut editable: UseEditable,
+    holder: State<ParagraphHolder>,
+    a11y_id: AccessibilityId,
+    (mut drag_origin, hovering, in_band): (State<Option<()>>, State<bool>, bool),
+) -> Paragraph {
+    // where it is laid out, and the drag's pointer, in the window: a
+    // scroll moves the text under a still pointer
+    let at = use_hook(|| Rc::new(Cell::new(CursorPoint::default())));
+    let pointer = use_hook(|| Rc::new(Cell::new(None::<CursorPoint>)));
+    let band = use_try_consume::<Follow>().filter(|_| in_band);
+    let drag_to = {
+        let (at, pointer) = (at.clone(), pointer.clone());
+        move || {
+            let (Some(g), true) = (pointer.get(), a11y_id.is_focused()) else {
+                return;
+            };
+            let local = g - at.get().to_vector();
+            editable.process_event(EditableEvent::Move {
+                location: past_ends(&holder.read(), local),
+                editor_line: EditorLine::SingleParagraph,
+                holder: &holder.read(),
+            });
+        }
+    };
+
+    let (pressed, origin) = (pointer.clone(), at.clone());
+    let on_pointer_down = move |e: Event<PointerEventData>| {
+        if !e.data().is_primary() {
+            return;
+        }
+        e.stop_propagation();
+        drag_origin.set(Some(()));
+        pressed.set(Some(e.global_location()));
+        origin.set((e.global_location() - e.element_location()).to_point());
+        if let Some(band) = &band {
+            band.pressed(e.global_location().y as f32);
+        }
+        editable.process_event(EditableEvent::Down {
+            location: e.element_location(),
+            editor_line: EditorLine::SingleParagraph,
+            holder: &holder.read(),
+        });
+        a11y_id.request_focus();
+    };
+
+    let (moved, mut follow) = (pointer.clone(), drag_to.clone());
+    let on_global_pointer_move = move |e: Event<PointerEventData>| {
+        if drag_origin.read().is_some() {
+            moved.set(Some(e.global_location()));
+            follow();
+        }
+    };
+    let (laid, mut scrolled) = (at.clone(), drag_to);
+    let on_sized = move |e: Event<SizedEventData>| {
+        let o = e.area.origin;
+        laid.set(CursorPoint::new(f64::from(o.x), f64::from(o.y)));
+        if drag_origin.read().is_some() {
+            scrolled();
+        }
+    };
+
+    let on_global_pointer_up = move |_: Event<PointerEventData>| {
+        if hovering() || a11y_id.is_focused() {
+            editable.process_event(EditableEvent::Release);
+        }
+        if drag_origin.read().is_some() {
+            drag_origin.set(None);
+            pointer.set(None);
+        } else if a11y_id.is_focused() {
+            a11y_id.request_unfocus();
+        }
+    };
+    let p = p
+        .on_global_pointer_move(on_global_pointer_move)
+        .on_pointer_down(on_pointer_down)
+        .on_global_pointer_up(on_global_pointer_up);
+    if in_band { p.on_sized(on_sized) } else { p }
+}
+
 impl Component for Selectable {
     fn render(&self) -> impl IntoElement {
         let value = self.text();
@@ -177,7 +277,7 @@ impl Component for Selectable {
         let hovering = use_state(|| false);
         let beam = use_state(|| false);
         let a11y_id = use_a11y();
-        let mut drag_origin = use_state(|| None);
+        let drag_origin = use_state(|| None::<()>);
 
         if value.as_str() != editable.editor().read().rope() {
             editable.editor_mut().write().set(value.as_str());
@@ -188,46 +288,6 @@ impl Component for Selectable {
             .editor()
             .read()
             .get_visible_selection(EditorLine::SingleParagraph);
-
-        let on_pointer_down = move |e: Event<PointerEventData>| {
-            if !e.data().is_primary() {
-                return;
-            }
-            e.stop_propagation();
-            drag_origin.set(Some(e.global_location() - e.element_location()));
-            editable.process_event(EditableEvent::Down {
-                location: e.element_location(),
-                editor_line: EditorLine::SingleParagraph,
-                holder: &holder.read(),
-            });
-            a11y_id.request_focus();
-        };
-
-        let on_global_pointer_move = move |e: Event<PointerEventData>| {
-            if a11y_id.is_focused()
-                && let Some(drag_origin) = drag_origin()
-            {
-                let mut element_location = e.element_location();
-                element_location.x -= drag_origin.x;
-                element_location.y -= drag_origin.y;
-                editable.process_event(EditableEvent::Move {
-                    location: past_ends(&holder.read(), element_location),
-                    editor_line: EditorLine::SingleParagraph,
-                    holder: &holder.read(),
-                });
-            }
-        };
-
-        let on_global_pointer_up = move |_: Event<PointerEventData>| {
-            if hovering() || a11y_id.is_focused() {
-                editable.process_event(EditableEvent::Release);
-            }
-            if drag_origin.read().is_some() {
-                drag_origin.set(None);
-            } else if a11y_id.is_focused() {
-                a11y_id.request_unfocus();
-            }
-        };
 
         let paragraph = paragraph()
             .layout(self.layout.clone())
@@ -243,11 +303,15 @@ impl Component for Selectable {
             .holder(holder.read().clone())
             .cursor([CursorIcon::Default, CursorIcon::Text][usize::from(beam())])
             .cursor_color(Color::BLACK)
-            .highlights(highlights.map(|h| vec![h]))
-            .on_global_pointer_move(on_global_pointer_move)
-            .on_pointer_down(on_pointer_down)
-            .on_global_pointer_up(on_global_pointer_up);
-        let mut paragraph = keys(paragraph, editable, holder);
+            .highlights(highlights.map(|h| vec![h]));
+        let mut paragraph = drag(
+            paragraph,
+            editable,
+            holder,
+            a11y_id,
+            (drag_origin, hovering, self.in_band),
+        );
+        paragraph = keys(paragraph, editable, holder);
         paragraph = hover(paragraph, editable, holder, hovering, beam, drag_origin);
         for span in &self.spans {
             paragraph = paragraph.span(span.clone());
