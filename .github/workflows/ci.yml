@@ -41,4 +41,13 @@ jobs:
           # v2: never restore a target built with debug info
           key: ${{ matrix.os }}-cargo-v2-${{ hashFiles('Cargo.lock') }}
           restore-keys: ${{ matrix.os }}-cargo-v2-
-      - run: scripts/check.sh
+      # the UI tests' frames (UI_SHOTS), kept when a run fails, to see what it drew
+      - run: mkdir -p "$UI_SHOTS" && scripts/check.sh
+        env:
+          UI_SHOTS: ${{ runner.temp }}/ui-shots
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: ui-shots-${{ matrix.os }}
+          path: ${{ runner.temp }}/ui-shots
+          if-no-files-found: ignore
