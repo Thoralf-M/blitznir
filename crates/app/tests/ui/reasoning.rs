@@ -200,15 +200,17 @@ pub fn the_thinking_row_streams_live(proxy: &LaunchProxy) {
     poll(&mut t, "more than the box holds", &|t| {
         text_from(t, "w01").is_some_and(|s| s.len() > first + 8 && s.contains("w30"))
     });
-    settle(&mut t);
+    // a line in after the last settle is a frame ahead of the box's jump
+    // to it: the box catches up, not stays a line behind
+    let gap = |t: &TestingRunner| {
+        let (_, text) = paragraph_with(t, "w01").expect("the trace");
+        label_at(t, "Fold").expect("its Fold").min_y() - text.max_y()
+    };
+    poll(&mut t, "the box at its newest line", &|t| {
+        (-2.0..20.0).contains(&gap(t))
+    });
+    assert!(panel.ui().streaming.is_some(), "caught up while it streams");
     shot(&mut t, "thinking-live-open");
-    let (_, text) = paragraph_with(&t, "w01").expect("the trace");
-    let fold = label_at(&t, "Fold").expect("its Fold");
-    let gap = fold.min_y() - text.max_y();
-    assert!(
-        (-2.0..20.0).contains(&gap),
-        "the box at its newest line: {gap}"
-    );
     wait_for("the answer", || panel.ui().streaming.is_none());
     settle(&mut t);
     settle(&mut t);
