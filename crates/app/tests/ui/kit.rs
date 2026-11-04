@@ -4,6 +4,7 @@
 use blitznir_app::panel::{Hooks, Panel, Parts};
 use blitznir_app::tray::Tray;
 use blitznir_core::config::{Config, Endpoint, Paths};
+use blitznir_core::lock;
 use blitznir_core::platform::Platform;
 use blitznir_core::platform::fake::FakePlatform;
 use blitznir_core::store::{Chat, Message, State, Store};
@@ -11,7 +12,7 @@ use freya::prelude::{Area, LaunchProxy};
 use freya_testing::prelude::*;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, mpsc};
 use std::time::{Duration, Instant};
 
 /// The panel's own size, in points.
@@ -280,14 +281,26 @@ pub fn answering_endpoint(text: &'static str) -> String {
     })
 }
 
-/// An endpoint that waits `first`, then streams `text` a word every `every`.
-pub fn slow_endpoint(text: &'static str, first: Duration, every: Duration) -> String {
-    serve(move |mut s| {
+/// An endpoint that waits `first`, then streams `text` a word every `every`,
+/// holding after the first `held` words until the sender is dropped:
+/// a slow machine cannot stream more words into what a test looks at.
+pub fn slow_endpoint(
+    text: &'static str,
+    first: Duration,
+    every: Duration,
+    held: usize,
+) -> (String, mpsc::Sender<()>) {
+    let (release, wait) = mpsc::channel::<()>();
+    let wait = Mutex::new(wait);
+    let url = serve(move |mut s| {
         read_request(&s);
         let _ = write!(s, "{STREAM_HEAD}");
         let _ = s.flush();
         std::thread::sleep(first);
-        for w in text.split(' ') {
+        for (i, w) in text.split(' ').enumerate() {
+            if i == held {
+                let _ = lock(&wait).recv();
+            }
             // `text` has no quote or backslash to escape
             let delta = format!(r#"{{"choices": [{{"delta": {{"content": "{w} "}}}}]}}"#);
             let _ = write!(s, "data: {delta}\n\n");
@@ -295,7 +308,8 @@ pub fn slow_endpoint(text: &'static str, first: Duration, every: Duration) -> St
             std::thread::sleep(every);
         }
         let _ = write!(s, "data: [DONE]\n\n");
-    })
+    });
+    (url, release)
 }
 
 /// An endpoint that streams `trace` as reasoning, a word every `every`,

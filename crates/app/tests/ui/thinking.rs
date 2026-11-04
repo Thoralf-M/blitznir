@@ -77,7 +77,8 @@ pub fn the_thinking_wave_shows_while_an_answer_streams(proxy: &LaunchProxy) {
         let name = if dark { "dark" } else { "light" };
         // long enough that a busy machine still sees the wave before the first word
         let first = Duration::from_millis(2000);
-        let url = slow_endpoint(ANSWER, first, Duration::from_millis(600));
+        // held after "One two three four": the line ends short of the area looked at
+        let (url, release) = slow_endpoint(ANSWER, first, Duration::from_millis(600), 4);
         let panel = panel_over(
             proxy,
             &format!("thinking-{name}"),
@@ -110,9 +111,9 @@ pub fn the_thinking_wave_shows_while_an_answer_streams(proxy: &LaunchProxy) {
         let area = ahead(&t, "One two", 150.0);
         let lit = colours(&mut t, area);
         shot(&mut t, &format!("thinking-{name}-streaming"));
-        // the words grow into the area: their antialiasing is a few dozen
-        // colours; a wave chasing them was over 500
-        assert!(lit < 100, "{name}: gone once words stream: {lit} colours");
+        // nothing drawn ahead of the words; a wave chasing them was over 500
+        assert_eq!(lit, 1, "{name}: gone once words stream: {lit} colours");
+        drop(release); // every request held there goes on (the chat's title asks too)
         poll_for(&mut t, "the answer", |_| panel.ui().streaming.is_none());
         t.poll(Duration::from_millis(30), Duration::from_millis(300));
         let area = ahead(&t, "ten", 330.0);
