@@ -167,6 +167,7 @@ fn unreadable_files_read_as_empty_and_are_moved_aside() {
         zoom: 0.0,
         closed: vec!["dictations".into()],
         history_open: false, // folded unless asked for
+        history_share: 0.0,
     };
     assert_eq!(t.0.state(), s);
 }
@@ -200,6 +201,17 @@ fn the_sidebar_width_stays_in_range() {
     assert_eq!(w(90.0).side_width(), State::SIDE_MIN);
     assert_eq!(w(300.0).side_width(), 300.0);
     assert_eq!(w(9000.0).side_width(), State::SIDE_MAX);
+}
+
+#[test]
+fn historys_share_is_none_until_dragged() {
+    let s = |history_share| State {
+        history_share,
+        ..State::default()
+    };
+    assert_eq!(s(0.0).history_share(), None);
+    assert_eq!(s(0.3).history_share(), Some(0.3));
+    assert_eq!(s(7.0).history_share(), Some(1.0));
 }
 
 #[test]

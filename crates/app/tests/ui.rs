@@ -27,6 +27,8 @@ mod reasoning;
 mod record;
 #[path = "ui/select.rs"]
 mod select;
+#[path = "ui/side.rs"]
+mod side;
 #[path = "ui/suggest.rs"]
 mod suggest;
 #[path = "ui/thinking.rs"]
@@ -47,7 +49,11 @@ use std::sync::Arc;
 type Test = (&'static str, fn(&LaunchProxy));
 
 /// Every test, run in this order on the one proxy.
-const TESTS: [Test; 70] = [
+const TESTS: [Test; 71] = [
+    (
+        "the_edge_over_history_drags_its_share",
+        side::the_edge_over_history_drags_its_share,
+    ),
     (
         "a_double_click_selects_a_word_a_triple_its_paragraph",
         view::a_double_click_selects_a_word_a_triple_its_paragraph,

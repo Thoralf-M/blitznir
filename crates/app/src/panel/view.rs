@@ -247,10 +247,10 @@ pub struct Ui {
     pub dictation_wave: bool,
     pub dictating: bool,
     pub folded: bool,
-    /// The sidebar's lists folded away, and its History unfolded (state.json).
+    /// The sidebar's folds, History's share as dragged, its width (state.json).
     pub closed: Vec<String>,
     pub history_open: bool,
-    /// The sidebar's width in points (state.json).
+    pub history_share: Option<f32>,
     pub side_width: f32,
     /// Attached for the next Return.
     pub images: Vec<Shot>,
@@ -272,8 +272,8 @@ impl Ui {
 
     /// The window as state.json and config.toml left it: sidebar, model, buttons.
     pub fn restore(&mut self, state: State, cfg: &Config) {
-        (self.folded, self.side_width, self.history_open) =
-            (state.folded, state.side_width(), state.history_open);
+        (self.folded, self.side_width) = (state.folded, state.side_width());
+        (self.history_open, self.history_share) = (state.history_open, state.history_share());
         self.closed.clone_from(&state.closed);
         self.picked = (state.endpoint, state.model);
         self.set_buttons(cfg);

@@ -20,7 +20,7 @@ use crate::panel::view::{self, ChatRow, Ui, short_time};
 use crate::panel::{List, Panel, list_name};
 use blitznir_core::store::{HistoryItem, HistoryKind};
 use freya::prelude::*;
-use room::{caps, clear_of_bar, list, rule};
+use room::{clear_of_bar, list};
 use std::sync::Arc;
 
 /// A tooltip shows this much of each text at most.
@@ -303,13 +303,13 @@ impl Component for Sidebar {
             .filter(|c| c.haystack.contains(&q))
             .collect();
         let none = |text| if found { "No matches" } else { text };
-        let said_rows = entries(&panel, &ui, &said);
-        let said_rows = or_none(&p, said_rows, none("Dictations show up here."));
-        let replaced_rows = entries(&panel, &ui, &replaced);
-        let replaced_rows = or_none(
-            &p,
-            replaced_rows,
-            none("Rewrites, translations and write-outs show up here."),
+        let rows = |found: &[(usize, &HistoryItem)], text| {
+            or_none(&p, entries(&panel, &ui, found), none(text))
+        };
+        let said_rows = rows(&said, "Dictations show up here.");
+        let replaced_rows = rows(
+            &replaced,
+            "Rewrites, translations and write-outs show up here.",
         );
         let chat_rows = or_none(&p, chats(&panel, &ui, &talks), none("No saved chats yet."));
         // a search opens every list: no match hides in a folded one
@@ -322,13 +322,9 @@ impl Component for Sidebar {
         // or a search finds something in it
         let in_history = !said.is_empty() || !replaced.is_empty();
         let history = ui.history_open || (found && in_history);
-        let open_recent = [dict, repl].iter().filter(|l| !closed(**l)).count();
         let chats_open = !closed(List::Chats);
-        let cap = caps(
-            super::window_size().height,
-            if history { open_recent } else { 0 },
-            chats_open,
-        );
+        let shows = [dict, repl].map(|l| history && !closed(l));
+        let (cap, laid, edge) = room::use_room(shows, chats_open, ui.history_share);
         let section = |kind, title, shown, total| Section {
             kind,
             title,
@@ -342,19 +338,17 @@ impl Component for Sidebar {
                 .width(Size::fill())
                 .padding((0.0, 0.0, 0.0, 10.0))
                 .child(section(dict, "Dictations", said.len(), said_all))
-                .maybe_child((!closed(dict)).then(|| list(said_rows, cap)))
+                .maybe_child((!closed(dict)).then(|| list(said_rows, cap, (laid.clone(), 0))))
                 .child(section(repl, "Replacements", replaced.len(), replaced_all))
-                .maybe_child((!closed(repl)).then(|| list(replaced_rows, cap)))
+                .maybe_child((!closed(repl)).then(|| list(replaced_rows, cap, (laid.clone(), 1))))
         });
         // the chats take the room; History waits at the bottom
         let chats_list = ScrollView::new()
             .width(Size::fill())
             .height(Size::flex(1.0))
-            .child(clear_of_bar(if chats_open {
-                chat_rows
-            } else {
-                Vec::new()
-            }));
+            .child(clear_of_bar(
+                chat_rows.into_iter().filter(|_| chats_open).collect(),
+            ));
         rect()
             .width(Size::px(self.width))
             .height(Size::fill())
@@ -364,7 +358,7 @@ impl Component for Sidebar {
             .child(search(&p, query))
             .child(section(List::Chats, "Chats", talks.len(), ui.chats.len()))
             .child(chats_list)
-            .child(rule(&p))
+            .child(edge)
             .child(history_heading(
                 &p,
                 &panel,

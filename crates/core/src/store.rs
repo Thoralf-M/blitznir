@@ -69,6 +69,9 @@ pub struct State {
     pub closed: Vec<String>,
     /// The sidebar's History (dictations, replacements) is unfolded; it starts folded.
     pub history_open: bool,
+    /// The share of the window each open History list may take, as its edge
+    /// was last dragged; 0 = never dragged.
+    pub history_share: f32,
 }
 
 impl State {
@@ -100,6 +103,11 @@ impl State {
         };
         next.copied()
             .unwrap_or(if up { z[z.len() - 1] } else { z[0] })
+    }
+
+    /// History's share as dragged, in range; None: never dragged.
+    pub fn history_share(&self) -> Option<f32> {
+        (self.history_share > 0.0).then(|| self.history_share.min(1.0))
     }
 
     /// The sidebar's width to draw: as dragged, kept in range.

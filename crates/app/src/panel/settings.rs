@@ -134,6 +134,15 @@ impl Panel {
         }
     }
 
+    /// History's share of the sidebar at the end of a drag of its edge,
+    /// kept in state.json.
+    pub fn set_history_share(&self, share: f32) {
+        self.with_ui(|ui| ui.history_share = Some(share));
+        if let Err(e) = self.store.update_state(|s| s.history_share = share) {
+            self.fail(e.to_string());
+        }
+    }
+
     /// The desktop's dark preference where the window system gives none.
     pub fn prefers_dark(&self) -> Option<bool> {
         self.platform.prefers_dark()
