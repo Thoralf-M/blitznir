@@ -172,6 +172,10 @@ impl Pieces<'_> {
     }
 }
 
+/// The chat's own run of quick presses, apart from a text field's.
+#[derive(Clone, PartialEq)]
+struct ChatPress;
+
 /// One laid-out line of text, in the window's points.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Line {
@@ -193,6 +197,8 @@ pub struct Selection {
     dragging: State<bool>,
     /// Where the pointer was last seen during a drag, in the window.
     pointer: Rc<Cell<Option<CursorPoint>>>,
+    /// The press picked a word or paragraph: its drag keeps it.
+    held: Rc<Cell<bool>>,
 }
 
 pub fn use_selection() -> Selection {
@@ -201,12 +207,14 @@ pub fn use_selection() -> Selection {
     let geos: Geos = use_hook(Geos::default);
     let pieces = use_hook(|| Rc::new(RefCell::new(Vec::new())));
     let pointer = use_hook(Rc::default);
+    let held = use_hook(Rc::default);
     let s = Selection {
         geos,
         pieces,
         sel,
         dragging,
         pointer,
+        held,
     };
     use_provide_context(|| s.clone())
 }
@@ -255,18 +263,32 @@ impl Selection {
         hit(&self.geos.borrow(), &self.lens(), at)
     }
 
+    /// A press starts a drag; a second quick one there selects the word
+    /// under it, a third its paragraph, and holds it (its drag moves nothing).
     pub fn down(&self, e: &Event<PointerEventData>) {
-        if e.data().is_primary() {
-            self.pointer.set(Some(e.global_location()));
-            let at = self.hit(e.global_location());
-            let (mut sel, mut dragging) = (self.sel, self.dragging);
-            sel.set(Some((at, at)));
-            dragging.set(true);
+        if !e.data().is_primary() {
+            return;
         }
+        let g = e.global_location();
+        let (k, at) = self.hit(g);
+        let text = (self.pieces.borrow().get(k)).map_or(String::new(), |p| p.text.clone());
+        let (from, to, drag) = match EventsCombos::<ChatPress>::pressed(g) {
+            PressEventType::Single => (at, at, true),
+            PressEventType::Double => {
+                let (a, b) = select::word(&text, at);
+                (a, b, false)
+            }
+            _ => (0, len16(&text), false),
+        };
+        self.pointer.set(drag.then_some(g));
+        self.held.set(!drag);
+        let (mut sel, mut dragging) = (self.sel, self.dragging);
+        sel.set(Some(((k, from), (k, to))));
+        dragging.set(true);
     }
 
     pub fn moved(&self, e: &Event<PointerEventData>) {
-        if (self.dragging)() {
+        if (self.dragging)() && !self.held.get() {
             self.pointer.set(Some(e.global_location()));
             self.follow();
         }

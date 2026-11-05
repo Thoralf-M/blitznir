@@ -258,3 +258,43 @@ pub fn a_drag_selects_a_replacements_before_and_after(proxy: &LaunchProxy) {
         "Hello everyone.\n\nAfter\n\nBonjour tout le monde."
     );
 }
+
+/// A double click in the chat's text selects the word under it, a triple
+/// click its paragraph: here a replacement's result.
+pub fn a_double_click_selects_a_word_a_triple_its_paragraph(proxy: &LaunchProxy) {
+    use blitznir_core::store::{Made, Store};
+    let seed = |s: &Store| {
+        let made = Made::new("rewrite", "Translate", None);
+        (s.add_replacement("Bonjour tout le monde.", "Hello everyone.", &made))
+            .expect("a replacement");
+    };
+    let platform = fake();
+    let cfg = blitznir_core::config::Config::default();
+    let panel = panel_seeded(proxy, "double-click", &[], platform.clone(), cfg, seed);
+    panel.open_recent(0);
+    wait_for("the row open", || panel.ui().about.is_some());
+    let p = panel.clone();
+    let app = move || ui::app(p.clone());
+    let (mut t, ()) = TestingRunner::new(app, Size2D::new(WINDOW.0, WINDOW.1), |_| {}, 1.0);
+    settle(&mut t);
+    let (_, at) = paragraph_with(&t, "Bonjour tout").expect("the result");
+    // "Bonjour " is about 55 pt at 13 pt: inside "tout"
+    let tout = (f64::from(at.min_x()) + 66.0, f64::from(at.center().y));
+    t.move_cursor(tout);
+    t.click_cursor(tout);
+    settle(&mut t); // the press focuses the transcript, for ⌘C
+    t.click_cursor(tout);
+    settle(&mut t);
+    shot(&mut t, "double-click");
+    super::chat::command(&mut t, "c");
+    wait_for("the word copied", || !platform.clipboard().is_empty());
+    assert_eq!(platform.clipboard(), "tout");
+    std::thread::sleep(Duration::from_millis(600)); // the next press starts anew
+    for _ in 0..3 {
+        t.click_cursor(tout);
+    }
+    settle(&mut t);
+    super::chat::command(&mut t, "c");
+    wait_for("the paragraph copied", || platform.clipboard() != "tout");
+    assert_eq!(platform.clipboard(), "Bonjour tout le monde.");
+}

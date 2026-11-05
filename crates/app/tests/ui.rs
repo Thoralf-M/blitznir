@@ -47,7 +47,11 @@ use std::sync::Arc;
 type Test = (&'static str, fn(&LaunchProxy));
 
 /// Every test, run in this order on the one proxy.
-const TESTS: [Test; 69] = [
+const TESTS: [Test; 70] = [
+    (
+        "a_double_click_selects_a_word_a_triple_its_paragraph",
+        view::a_double_click_selects_a_word_a_triple_its_paragraph,
+    ),
     (
         "a_drag_selects_a_replacements_before_and_after",
         view::a_drag_selects_a_replacements_before_and_after,

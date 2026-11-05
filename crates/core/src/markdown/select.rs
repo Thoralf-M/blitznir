@@ -3,6 +3,7 @@
 //! units, as a laid-out paragraph counts them.
 
 use super::{Block, Run};
+use unicode_segmentation::UnicodeSegmentation;
 
 /// Stands in for an inline element (a link's open button) in a paragraph:
 /// Skia counts a placeholder as one unit.
@@ -79,6 +80,22 @@ pub fn pieces(blocks: &[Block]) -> Vec<Piece> {
 
 pub fn len16(s: &str) -> usize {
     s.encode_utf16().count()
+}
+
+/// The word of `text` at UTF-16 offset `at`, as a double click picks it:
+/// Unicode's word bounds, so the spaces or the dot there are a "word" too;
+/// at the very end, the last one.
+pub fn word(text: &str, at: usize) -> (usize, usize) {
+    let mut start = 0;
+    for w in text.split_word_bounds() {
+        let end = start + len16(w);
+        if at < end {
+            return (start, end);
+        }
+        start = end;
+    }
+    let last = text.split_word_bounds().next_back().map_or(0, len16);
+    (start - last, start)
 }
 
 /// The part of piece `k` (`len` long) inside the selection `a`–`b` (either
@@ -169,6 +186,17 @@ mod tests {
         assert_eq!(range_in(0, 4, (0, 5), (0, 6)), None);
         assert_eq!(selected(&p, (0, 5), (0, 6)), "");
         assert_eq!(selected(&p, (0, 2), (0, 6)), "ld");
+    }
+
+    #[test]
+    fn a_double_click_takes_the_word_under_it() {
+        let t = "Bonjour tout le monde.";
+        assert_eq!(word(t, 0), (0, 7), "Bonjour");
+        assert_eq!(word(t, 9), (8, 12), "tout");
+        assert_eq!(word(t, 7), (7, 8), "the space");
+        assert_eq!(word(t, 22), (21, 22), "past the end: the dot");
+        assert_eq!(word("a😀 don't", 4), (4, 9), "UTF-16, one word for don't");
+        assert_eq!(word("", 0), (0, 0));
     }
 
     #[test]
