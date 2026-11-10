@@ -93,6 +93,7 @@ fn values_are_validated() {
     assert!(err("[dictation]\nsegment_max_s = 2.0\n").contains("segment_max_s"));
     assert!(err("[capture]\ncmd = \"shoot\"\n").contains("{path}"));
     assert!(err("[panel]\neffect_volume = 101\n").contains("panel.effect_volume"));
+    assert!(err("[llm]\nchat_max_tokens = 512\n").contains("llm.chat_max_tokens"));
     assert!(err("[translate]\nhome = \"\"\n").contains("translate.home"));
     assert!(
         err("[panel]\neffect = \"sparks\"\n")

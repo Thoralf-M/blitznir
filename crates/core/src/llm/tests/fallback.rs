@@ -35,7 +35,12 @@ async fn thinking_past_the_ceiling_is_answered_without_thinking() {
             )
         })
         .collect();
-    let want = [(4096, true), (8192, true), (8192, false)].map(|(n, t)| (json!(n), json!(t)));
+    let want = [
+        (4096, true),
+        (MAX_TOKENS_CEILING, true),
+        (MAX_TOKENS_CEILING, false),
+    ]
+    .map(|(n, t)| (json!(n), json!(t)));
     assert_eq!(tries, want);
 }
 
@@ -43,10 +48,8 @@ async fn thinking_past_the_ceiling_is_answered_without_thinking() {
 async fn the_think_off_answer_keeps_the_trace_that_ran_out() {
     let looping = |t: &str| Reply::Sse(vec![thinking("reasoning", t), finish("length"), done()]);
     let plain = Reply::Sse(vec![content("ok"), done()]);
-    let m = mock(
-        vec![looping("Hm."), looping("Wait, I'll check…"), plain],
-        "",
-    );
+    // a chat's budget is its cap: no larger retry, straight to no thinking
+    let m = mock(vec![looping("Wait, I'll check…"), plain], "");
     let mut b = body(4096);
     b["chat_template_kwargs"]["enable_thinking"] = true.into();
     let a = chat(&m, b).await;
@@ -61,7 +64,7 @@ async fn the_think_off_retry_gets_the_trace_as_notes_cut_at_its_loop() {
     let looped = format!("{head}{head}{head}");
     let looping = |t: &str| Reply::Sse(vec![thinking("reasoning", t), finish("length"), done()]);
     let plain = Reply::Sse(vec![content("ok"), done()]);
-    let m = mock(vec![looping("Hm."), looping(&looped), plain], "");
+    let m = mock(vec![looping(&looped), plain], "");
     let mut b = body(4096);
     b["chat_template_kwargs"]["enable_thinking"] = true.into();
     b["messages"] =
@@ -73,24 +76,20 @@ async fn the_think_off_retry_gets_the_trace_as_notes_cut_at_its_loop() {
         .iter()
         .map(|(_, b)| b["messages"][0]["content"].as_str().unwrap())
         .collect();
-    assert_eq!(
-        systems[..2],
-        ["Be brief."; 2],
-        "no notes while it may think"
-    );
+    assert_eq!(systems[0], "Be brief.", "no notes while it may think");
     let notes = format!("<notes>\n{head}\n</notes>");
     assert!(
-        systems[2].starts_with("Be brief.\n\nYour earlier reasoning"),
+        systems[1].starts_with("Be brief.\n\nYour earlier reasoning"),
         "{}",
-        systems[2]
+        systems[1]
     );
     assert!(
-        systems[2].ends_with(&notes),
+        systems[1].ends_with(&notes),
         "cut where it repeats: {}",
-        systems[2]
+        systems[1]
     );
     assert_eq!(
-        sent[2].1["messages"].as_array().unwrap().len(),
+        sent[1].1["messages"].as_array().unwrap().len(),
         2,
         "one system message"
     );
@@ -117,7 +116,7 @@ async fn a_looping_trace_is_dropped_and_answered_without_thinking_at_once() {
     assert_eq!((a.text.as_str(), a.unthought), ("ok", Unthought::Looped));
     let kept = a.thinking.chars().count();
     assert!(
-        kept < head.len() + 15 * SAGE.len(),
+        kept < head.len() + 25 * SAGE.len(),
         "dropped early: {kept} chars"
     );
     assert_eq!(seen.last(), Some(&a.thinking), "streamed until dropped");

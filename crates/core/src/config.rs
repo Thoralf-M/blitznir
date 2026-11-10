@@ -111,6 +111,7 @@ pub struct Translate {
 #[serde(deny_unknown_fields, default)]
 pub struct Llm {
     pub chat_reasoning: bool,
+    pub chat_max_tokens: usize,
     pub hide_models: String,
     pub vision_models: String,
 }
@@ -230,6 +231,7 @@ impl Default for Llm {
     fn default() -> Self {
         Self {
             chat_reasoning: false,
+            chat_max_tokens: crate::llm::MAX_TOKENS_CEILING,
             hide_models: HIDE_MODELS.into(),
             vision_models: VISION_MODELS.into(),
         }

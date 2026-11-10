@@ -149,10 +149,10 @@ fn request_bodies_follow_the_table() {
         (b["temperature"].as_f64(), b["max_tokens"].as_u64()),
         (Some(0.4), Some(1024 + 8 + 2048))
     );
-    let long = "x".repeat(9000);
+    let long = "x".repeat(20_000);
     assert_eq!(
         rewrite_body(&cfg, "m", &long, "", None, &[])["max_tokens"],
-        8192
+        crate::llm::MAX_TOKENS_CEILING
     );
     let img = rewrite_body(
         &cfg,
@@ -288,8 +288,10 @@ fn chat_body_folds_the_selection_into_the_system_prompt() {
             b["max_tokens"].as_u64(),
             b["chat_template_kwargs"]["enable_thinking"].as_bool()
         ),
-        (Some(4096), Some(false))
+        (Some(MAX_TOKENS_CEILING as u64), Some(false))
     );
+    cfg.llm.chat_max_tokens = 32_768;
+    assert_eq!(chat_body(&cfg, "m", "", &turns)["max_tokens"], 32_768);
     cfg.llm.chat_reasoning = true;
     let b = chat_body(&cfg, "m", "the text", &turns);
     assert!(

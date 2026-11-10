@@ -321,8 +321,8 @@ pub fn chat_body(cfg: &Config, model: &str, selection: &str, turns: &[Turn<'_>])
         "messages": messages,
         "temperature": 0.4,
         "top_p": 0.9,
-        // a long answer AND a reasoning preamble; the retry goes larger
-        "max_tokens": 4096,
+        // a long answer AND a reasoning preamble; also its retries' cap
+        "max_tokens": cfg.llm.chat_max_tokens,
         "chat_template_kwargs": {"enable_thinking": cfg.llm.chat_reasoning},
     })
 }

@@ -82,6 +82,7 @@ pub const SECTIONS: &[Section] = &[
         about: "Which of your servers' models the picker offers, and how chat answers.",
         fields: &[
             f("llm", "chat_reasoning", "Reason before chat answers", "More complete answers, slower on simple ones", Kind::Bool),
+            f("llm", "chat_max_tokens", "Chat token budget", "Reasoning and answer together, 1024 to 262144", Kind::Int).advanced(),
             f("llm", "hide_models", "Hide models (regex)", "Model ids matching this are not offered", Kind::Text).advanced(),
             f("llm", "vision_models", "Vision models (regex)", "Ids matching this take images when the server does not say", Kind::Text).advanced(),
         ],

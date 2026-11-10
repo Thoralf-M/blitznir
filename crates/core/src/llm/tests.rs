@@ -186,7 +186,7 @@ async fn an_answer_lost_to_reasoning_is_retried_once_at_the_ceiling() {
         .iter()
         .map(|(_, b)| b["max_tokens"].clone())
         .collect();
-    assert_eq!(budgets, [json!(2312), json!(8192)]);
+    assert_eq!(budgets, [json!(2312), json!(MAX_TOKENS_CEILING)]);
 }
 
 #[tokio::test]
@@ -197,7 +197,7 @@ async fn no_second_retry_and_none_at_the_ceiling() {
     assert!(err.contains("reasoning (9 chars)"), "{err}");
     m.server.join().unwrap();
     let m = mock(vec![empty()], "");
-    assert!(ask(&m, 8192).await.0.is_err());
+    assert!(ask(&m, MAX_TOKENS_CEILING).await.0.is_err());
     m.server.join().unwrap();
     assert_eq!(m.requests.lock().unwrap().len(), 1);
     // no content and no reasoning: nothing to retry for
@@ -213,7 +213,10 @@ async fn a_cut_off_answer_is_retried_once_then_refused() {
     let cut = || Reply::Sse(vec![content("Half an ans"), finish("length"), done()]);
     let m = mock(vec![cut(), cut()], "");
     let err = ask(&m, 100).await.0.unwrap_err().to_string();
-    assert_eq!(err, "the answer was cut off at max_tokens=8192");
+    assert_eq!(
+        err,
+        format!("the answer was cut off at max_tokens={MAX_TOKENS_CEILING}")
+    );
     m.server.join().unwrap();
     assert_eq!(m.requests.lock().unwrap().len(), 2);
     let whole = Reply::Sse(vec![content("A whole answer."), finish("stop")]);

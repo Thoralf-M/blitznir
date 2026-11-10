@@ -112,7 +112,7 @@ pub(super) fn ended(finish: Option<&str>, done: bool) -> Ended {
 }
 
 /// Turns `body` into the next try for an answer that ran out of tokens, or
-/// false when none is left: first the ceiling as budget, then — if it was
+/// false when none is left: first `ceiling` as budget, then — if it was
 /// asked to think — the same without thinking, `reasoning` (the starved
 /// try's) in its system message as notes ([`tasks::add_notes`]). A trace
 /// that `looped` skips the budget: more of it cannot end a loop.
@@ -120,15 +120,14 @@ pub(super) fn ended(finish: Option<&str>, done: bool) -> Ended {
 /// Sage-A1.5 on one chat question filled 8192 tokens in 7 of 8 runs at
 /// every reasoning_effort, its last 4000 chars repeating earlier text.
 /// An answer without thinking beats an error.
-pub(super) fn escalate(body: &mut Value, reasoning: &str, looped: bool) -> bool {
+pub(super) fn escalate(body: &mut Value, reasoning: &str, looped: bool, ceiling: usize) -> bool {
     let budget = body["max_tokens"].as_u64().unwrap_or(0) as usize;
     let n = reasoning.chars().count();
-    if !looped && budget < super::MAX_TOKENS_CEILING {
+    if !looped && budget < ceiling {
         log::warn!(
-            "out of tokens at max_tokens={budget} ({n} chars of reasoning) — retrying with max_tokens={}",
-            super::MAX_TOKENS_CEILING
+            "out of tokens at max_tokens={budget} ({n} chars of reasoning) — retrying with max_tokens={ceiling}"
         );
-        body["max_tokens"] = super::MAX_TOKENS_CEILING.into();
+        body["max_tokens"] = ceiling.into();
         return true;
     }
     if body["chat_template_kwargs"]["enable_thinking"] == true {

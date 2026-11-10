@@ -33,6 +33,9 @@ impl Config {
         if self.panel.effect_volume > 100 {
             return Err("panel.effect_volume is a volume from 0 to 100".into());
         }
+        if !(1024..=262_144).contains(&self.llm.chat_max_tokens) {
+            return Err("llm.chat_max_tokens must be between 1024 and 262144".into());
+        }
         crate::tasks::hide_regex(&self.llm.hide_models)
             .map_err(|e| format!("llm.hide_models: {e}"))?;
         crate::tasks::hide_regex(&self.llm.vision_models)

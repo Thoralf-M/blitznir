@@ -6,14 +6,16 @@
 /// A trace is looked at once per this many new chars: the check reads it all.
 const EVERY: usize = 200;
 /// The trace's last this many chars are the loop's sample. Sage repeats
-/// 200-char stretches (code it re-drafts) even in traces that finish; on 15
-/// of its traces 500 chars seen twice before caught 7 of 11 that ran to the
-/// budget and cut none of the 4 that finished (200 chars: 8 of 11, but 3 of
-/// 4 finishing ones cut too). Its loops repeat 100 to 3500 chars.
-const WINDOW: usize = 500;
+/// stretches in traces that finish: code it re-drafts, and a portrait
+/// described for an image model, part by part, again and again. On that
+/// portrait, 500 chars seen twice before cut all 3 runs that finished (at
+/// 8.4k–17.8k chars); 1000 seen three times cut none and still caught all 3
+/// that looped to 24k tokens (at 20.8k–31.8k chars). A loop that drifts
+/// may now run to the budget instead. Its loops repeat 100 to 3500 chars.
+const WINDOW: usize = 1000;
 /// The sample seen this often before (overlaps count) is a loop: a passage
 /// quoted twice is not.
-const SEEN: usize = 2;
+const SEEN: usize = 3;
 
 /// Watches a streaming trace for a loop.
 #[derive(Default)]
@@ -117,9 +119,9 @@ pub(super) mod tests {
         let trace = format!("{head}{}", SAGE.repeat(40));
         let at = caught(&trace).expect("caught");
         let rounds = (at - head.len()) as f32 / SAGE.chars().count() as f32;
-        // the 500-char sample spans 5 rounds and must be seen twice before
-        assert!(rounds <= 14.0, "after {rounds:.1} rounds");
-        let umlauts = format!("{head}{}", "Prüfe, ob es grün ist. Ja. ".repeat(80));
+        // the 1000-char sample spans 10 rounds and must be seen 3 times before
+        assert!(rounds <= 24.0, "after {rounds:.1} rounds");
+        let umlauts = format!("{head}{}", "Prüfe, ob es grün ist. Ja. ".repeat(120));
         assert!(caught(&umlauts).is_some(), "on chars, not bytes");
     }
 

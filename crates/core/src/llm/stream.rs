@@ -28,11 +28,12 @@ type Calls<'c, 'a, 'b> = (&'c mut OnDelta<'a>, &'c mut OnDelta<'b>, Unwrap);
 impl Client {
     /// Stream one chat completion; only a whole answer is Ok. When the tokens
     /// ran out (cut off, reasoned without answering, or looped) it retries as
-    /// [`sse::escalate`] says: retrying beats losing the user's rewrite.
+    /// [`sse::escalate`] says, up to `ceiling` tokens: retrying beats losing
+    /// the user's rewrite.
     pub(super) async fn answer(
         &self,
         ep: &Endpoint,
-        body: Value,
+        (body, ceiling): (Value, usize),
         (on_delta, on_think, unwrap): Calls<'_, '_, '_>,
         cancel: &CancellationToken,
     ) -> Result<Answer> {
@@ -45,7 +46,9 @@ impl Client {
             .await?;
         let mut thinking = a.reasoning.clone();
         let mut looped = a.ended == Ended::Looped;
-        while a.starved() && sse::escalate(&mut body, &a.reasoning, a.ended == Ended::Looped) {
+        while a.starved()
+            && sse::escalate(&mut body, &a.reasoning, a.ended == Ended::Looped, ceiling)
+        {
             a = self
                 .attempt(ep, &body, (on_delta, on_think, unwrap), cancel)
                 .await?;

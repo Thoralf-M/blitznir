@@ -22,7 +22,10 @@ pub use stream::Answer;
 use tokio::sync::watch;
 
 /// Never ask for more than this in one request; also the retry's budget.
-pub const MAX_TOKENS_CEILING: usize = 8192;
+/// Sage asked to describe a portrait for an image model finished 3 of 6
+/// runs, the longest after 29.7k chars: at 3.5–4 chars a token, 7.4k–8.5k
+/// tokens, at or past 8192.
+pub const MAX_TOKENS_CEILING: usize = 16_384;
 
 /// Called with the unwrapped answer so far; for a chat's thinking, with
 /// the reasoning so far.
@@ -182,13 +185,15 @@ impl Client {
         cancel: &CancellationToken,
     ) -> Result<String> {
         let quiet = &mut |_: &str| {};
+        let body = (body, MAX_TOKENS_CEILING);
         let a = self.answer(ep, body, (on_delta, quiet, strip_wrappers), cancel);
         Ok(a.await?.text)
     }
 
     /// [`Client::stream`] for a chat: its markdown as written, a code block
     /// that opens or closes the answer included, and the reasoning behind
-    /// it, streamed to `on_thinking` as it comes.
+    /// it, streamed to `on_thinking` as it comes. Its budget is its cap
+    /// (`[llm] chat_max_tokens`): out of it, it answers without thinking.
     pub async fn chat(
         &self,
         ep: &Endpoint,
@@ -198,7 +203,8 @@ impl Client {
         cancel: &CancellationToken,
     ) -> Result<Answer> {
         let calls = (on_delta, on_thinking, str::to_owned as Unwrap);
-        self.answer(ep, body, calls, cancel).await
+        let cap = body["max_tokens"].as_u64().unwrap_or(0) as usize;
+        self.answer(ep, (body, cap), calls, cancel).await
     }
 
     /// Translate: ask which language `text` is in, then translate in that direction.

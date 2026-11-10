@@ -49,6 +49,10 @@ other = "English"
 # open-ended question completely, but a simple one took 8.7 s instead of 0.6 s.
 # Rewriting never reasons: it measurably hurts a spec-following edit.
 chat_reasoning = false
+# A chat answer's token budget, its reasoning included; one that runs out
+# is answered again without reasoning, not with more. A portrait described
+# for an image model reasoned for up to ~8.5k tokens and then answered.
+chat_max_tokens = 16384
 # Models whose id matches this regex (case-insensitive) are not offered:
 # drafters, embedders, speech models, and `name@?` (LM Studio's MTP drafter).
 hide_models = '''(^|[-_/@])(mtp|draft|drafter|dflash\d*)([-_/@.]|$)|assistant$|(tts|asr|whisper|parakeet|embed)|@\?$'''
