@@ -88,12 +88,16 @@ fn an_empty_chat_is_not_stored_and_delete_removes_images() {
     let name = Store::image_name();
     t.0.put_image(&name, "data:image/png;base64,AAAA").unwrap();
     assert_eq!(t.0.image(&name).unwrap(), "data:image/png;base64,AAAA");
+    assert_eq!(t.0.original(&name), None, "sent as it came");
+    t.0.put_original(&name, b"big").unwrap();
+    assert_eq!(t.0.original(&name).as_deref(), Some(&b"big"[..]));
     let mut c = Chat::new();
     c.messages.push(msg("user", "see", vec![name.clone()]));
     t.0.save_chat(&mut c).unwrap();
     t.0.delete_chat(&c.id).unwrap();
     assert!(t.0.chats().is_empty());
     assert!(!t.1.images().join(&name).exists());
+    assert_eq!(t.0.original(&name), None, "the original went too");
 }
 
 fn roles(s: &Store, id: &str) -> Vec<String> {

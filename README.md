@@ -37,7 +37,8 @@ One native Rust app with a menu-bar icon; its windows are drawn by [Freya](https
   pastes an answer back. Chats are saved and searchable. **Think** (the bulb by the model) lets
   a reasoning model think before it answers; off by default. Its thinking streams in, folded
   above the answer. One that loops or thinks past the token ceiling is answered without it.
-  A cancelled or failed question stays in its chat, marked, with a Send again.
+  A cancelled or failed question stays in its chat, marked, with a Send again; Retry asks for a
+  new last answer. Images open large as attached (Fit, 1:1, wheel zoom, drag) and copy.
 - **Vocabulary**: spoken forms become written ones ("o m l x" → oMLX), and spellings are kept.
 - **History** of dictations and replacements; **Undo last replace**.
 - **Effects** while it works: a beam of light (or lightning) onto the text, a soft wave under

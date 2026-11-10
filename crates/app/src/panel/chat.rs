@@ -41,7 +41,7 @@ fn ask(
     move |me: &Panel, cancel: &CancellationToken| {
         // the new turn is stored before it is asked: unanswered, it stays marked
         for (name, shot) in &images {
-            me.store.put_image(name, &shot.url)?;
+            me.put_shot(name, shot)?;
         }
         {
             // a cancel marks the turn under this lock: the save never lands over its mark
@@ -77,7 +77,7 @@ impl Panel {
             .iter()
             .map(|s| {
                 let name = Store::image_name();
-                (self.store.put_image(&name, &s.url).map(|()| name)).map_err(|e| e.to_string())
+                (self.put_shot(&name, s).map(|()| name)).map_err(|e| e.to_string())
             })
             .collect()
     }
@@ -114,7 +114,8 @@ impl Panel {
             .image(name)
             .map_err(|e| log::warn!("image {name}: {e}"));
         let png = store::data_url_bytes(&url.ok()?)?;
-        let shot = self.shot(String::new(), png);
+        let mut shot = self.shot(String::new(), png, None);
+        shot.stored = Some(name.into()); // its original read when wanted
         lock(&self.pngs).insert(name.into(), shot.clone());
         Some(shot)
     }

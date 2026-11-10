@@ -49,6 +49,8 @@ pub const OUT: &[u8] = svg!(
 pub const TRASH: &[u8] = svg!(
     r#"<path d="M4 7h16M9 7V4h6v3M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M10 11v6M14 11v6"/>"#
 );
+// Retry: a circling arrow, "ask again".
+pub const RETRY: &[u8] = svg!(r#"<path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/>"#);
 pub const CHAT: &[u8] = svg!(r#"<path d="M4 5h16v11H10l-5 4v-4H4z"/>"#);
 pub const SEARCH: &[u8] = svg!(r#"<circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/>"#);
 pub const EYE: &[u8] = svg!(

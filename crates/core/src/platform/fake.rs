@@ -129,6 +129,11 @@ impl Platform for FakePlatform {
         lock(&self.image).clone()
     }
 
+    fn set_clipboard_image(&self, png: &[u8]) -> Result<()> {
+        *lock(&self.image) = Some(png.to_vec());
+        Ok(())
+    }
+
     fn show_quietly(&self) {}
 
     fn configure(&self, cfg: &crate::config::Config) {

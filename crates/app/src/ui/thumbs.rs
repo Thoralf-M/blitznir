@@ -1,6 +1,6 @@
 //! Images as thumbnails: attached to the composer (with a Remove) and in
-//! a chat's messages. A press on one shows it large over the window, fitted
-//! and never past its own size; a press or Esc closes it.
+//! a chat's messages (with a Copy). A press on one shows it large over the
+//! window (viewer.rs).
 
 use super::icons::{self, icon_button};
 use super::style::Palette;
@@ -15,15 +15,12 @@ use std::sync::Arc;
 const THUMB_H: f32 = 90.0;
 const THUMB_W: (f32, f32) = (40.0, 240.0);
 
-/// The room the large image leaves around itself, in points.
-const MARGIN: f32 = 24.0;
-
 /// The image shown large, if any: the window's (`app` provides it).
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct Shown(pub State<Option<Shot>>);
 
 /// `png`'s size in pixels, from its header alone.
-fn dims(png: &[u8]) -> Option<(f32, f32)> {
+pub(super) fn dims(png: &[u8]) -> Option<(f32, f32)> {
     let reader = image::ImageReader::new(std::io::Cursor::new(png)).with_guessed_format();
     let (w, h) = reader.ok()?.into_dimensions().ok()?;
     Some((w as f32, h.max(1) as f32))
@@ -36,12 +33,23 @@ fn thumb_width(png: &[u8]) -> f32 {
     })
 }
 
-/// Attached and stored images, as thumbnails; attached ones have a Remove
-/// on their top-right corner.
+/// The dark disc on an image's top-right corner: the button reads on any
+/// picture.
+fn on_corner(button: impl IntoElement) -> Rect {
+    rect()
+        .position(Position::new_absolute().top(3.0).right(3.0))
+        .corner_radius(99.0)
+        .background(Color::from_argb(170, 0, 0, 0))
+        .color(Color::WHITE)
+        .child(button)
+}
+
+/// Attached and stored images, as thumbnails; on their top-right corner,
+/// attached ones (`removable`) have a Remove, stored ones a Copy.
 pub fn thumbs(
     p: &Palette,
     shots: &[Shot],
-    remove: Option<&Arc<Panel>>,
+    (panel, removable): (&Arc<Panel>, bool),
     Shown(shown): Shown,
 ) -> Option<Element> {
     if shots.is_empty() {
@@ -61,23 +69,20 @@ pub fn thumbs(
             .expanded()
             .on_press(move |_| shown.set(Some(this.clone())))
             .child(image);
-        let x = remove.map(|panel| {
-            let (panel, id) = (panel.clone(), s.id);
-            let button = icon_button(p, icons::X, "Remove", true, move |_| panel.remove_image(id));
-            // a dark disc: the × reads on any picture
-            rect()
-                .position(Position::new_absolute().top(3.0).right(3.0))
-                .corner_radius(99.0)
-                .background(Color::from_argb(170, 0, 0, 0))
-                .color(Color::WHITE)
-                .child(button)
-        });
+        let (panel, id, this) = (panel.clone(), s.id, s.clone());
+        let corner = if removable {
+            icon_button(p, icons::X, "Remove", true, move |_| panel.remove_image(id))
+        } else {
+            icon_button(p, icons::COPY, "Copy image", true, move |_| {
+                panel.copy_shot(this.clone());
+            })
+        };
         rect()
             .key(s.id)
             .width(Size::px(thumb_width(&s.png)))
             .height(Size::px(THUMB_H))
             .child(image)
-            .maybe_child(x)
+            .child(on_corner(corner))
             .into_element()
     };
     let row = rect()
@@ -87,32 +92,4 @@ pub fn thumbs(
         .spacing(6.0)
         .children(shots.iter().map(thumb));
     Some(row.into_element())
-}
-
-/// The image shown large over the whole window, if one is.
-pub fn shown_large(Shown(mut shown): Shown) -> Option<Element> {
-    let s = shown.read().clone()?;
-    let window = super::window_size();
-    // its pixels are the screen's: half as many points on a Retina screen
-    let scale = *Platform::get().current_window().scale_factor.read() as f32;
-    let (w, h) = dims(&s.png).map_or((window.width, window.height), |(w, h)| {
-        (w / scale, h / scale)
-    });
-    let fit = ((window.width - 2.0 * MARGIN) / w)
-        .min((window.height - 2.0 * MARGIN) / h)
-        .min(1.0);
-    let image = ImageViewer::new((s.id, s.png.clone()))
-        .width(Size::px(w * fit))
-        .height(Size::px(h * fit));
-    let backdrop = rect()
-        .position(Position::new_global().top(0.0).left(0.0))
-        .width(Size::px(window.width))
-        .height(Size::px(window.height))
-        .main_align(Alignment::Center)
-        .cross_align(Alignment::Center)
-        .background(Color::from_argb(200, 0, 0, 0))
-        .layer(Layer::Overlay)
-        .on_press(move |_| shown.set(None))
-        .child(image);
-    Some(backdrop.into_element())
 }

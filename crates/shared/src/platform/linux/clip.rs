@@ -8,7 +8,7 @@
 use blitznir_core::lock;
 use gtk::glib::{self, ToVariant};
 use gtk::prelude::{Cast, GtkWindowExt};
-use gtk::{gdk, gio};
+use gtk::{gdk, gdk_pixbuf, gio};
 use std::sync::Mutex;
 use std::sync::mpsc;
 use std::thread;
@@ -82,6 +82,20 @@ pub fn image() -> Option<Vec<u8>> {
     .flatten()
 }
 
+/// `png` on GTK's CLIPBOARD; like the text, taken only while we have focus.
+/// false: no GTK main loop, or not an image.
+pub fn set_gtk_image(png: &[u8]) -> bool {
+    let bytes = glib::Bytes::from(png);
+    on_main(move || {
+        let stream = gio::MemoryInputStream::from_bytes(&bytes);
+        let pixbuf = gdk_pixbuf::Pixbuf::from_stream(&stream, gio::Cancellable::NONE).ok()?;
+        gtk::Clipboard::get(&gdk::SELECTION_CLIPBOARD).set_image(&pixbuf);
+        Some(())
+    })
+    .flatten()
+    .is_some()
+}
+
 /// The X11 CLIPBOARD owner. It must stay alive: X11 serves a selection from
 /// the owner's process, so the text is gone when it is dropped.
 #[derive(Default)]
@@ -97,6 +111,27 @@ impl X11 {
         let set = cb
             .as_mut()
             .map(|c| c.set_text(text).map_err(|e| e.to_string()));
+        set.unwrap_or_else(|| Err("no X11 clipboard".into()))
+    }
+
+    /// `png` on the X11 CLIPBOARD, as arboard's RGBA.
+    pub fn set_image(&self, png: &[u8]) -> Result<(), String> {
+        let rgba = image::load_from_memory(png)
+            .map_err(|e| e.to_string())?
+            .into_rgba8();
+        let (width, height) = (rgba.width() as usize, rgba.height() as usize);
+        let img = arboard::ImageData {
+            width,
+            height,
+            bytes: rgba.into_raw().into(),
+        };
+        let mut cb = lock(&self.0);
+        if cb.is_none() {
+            *cb = Some(arboard::Clipboard::new().map_err(|e| e.to_string())?);
+        }
+        let set = cb
+            .as_mut()
+            .map(|c| c.set_image(img).map_err(|e| e.to_string()));
         set.unwrap_or_else(|| Err("no X11 clipboard".into()))
     }
 

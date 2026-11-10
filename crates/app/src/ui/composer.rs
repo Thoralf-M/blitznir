@@ -309,7 +309,7 @@ impl Component for Composer {
             .placeholder_color(p.muted)
             .on_pre_key_down(keys(panel.clone()));
         let large = use_consume::<Shown>();
-        let attached = thumbs(&p, &ui.images, Some(&panel), large).map(|t| {
+        let attached = thumbs(&p, &ui.images, (&panel, true), large).map(|t| {
             rect()
                 .width(Size::fill())
                 .padding((8.0, 10.0, 0.0, 10.0))

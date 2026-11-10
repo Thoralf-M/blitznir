@@ -1,10 +1,13 @@
 use super::*;
+use freya::prelude::Bytes;
 
 fn shot(id: u64) -> Shot {
     Shot {
         id,
         url: String::new(),
         png: Bytes::new(),
+        full: None,
+        stored: None,
     }
 }
 

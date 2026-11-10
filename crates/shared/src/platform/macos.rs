@@ -20,7 +20,7 @@ use objc2_core_graphics::{
     CGEvent, CGEventField, CGEventFlags, CGEventSource, CGEventSourceStateID, CGEventTapLocation,
     CGEventType,
 };
-use objc2_foundation::{NSDictionary, NSString};
+use objc2_foundation::{NSData, NSDictionary, NSString};
 use std::path::Path;
 use std::process::{Child, Command};
 use std::sync::mpsc::Sender;
@@ -307,6 +307,18 @@ impl Platform for Mac {
             };
             data.map(|d| d.to_vec())
         })
+    }
+
+    fn set_clipboard_image(&self, png: &[u8]) -> Result<()> {
+        let png = png.to_vec();
+        let set = on_pasteboard(move |pb| {
+            let data = NSData::with_bytes(&png);
+            pb.clearContents();
+            // SAFETY: reading an immutable AppKit constant.
+            pb.setData_forType(Some(&data), unsafe { NSPasteboardTypePNG })
+        });
+        set.then_some(())
+            .ok_or_else(|| Error::Platform("the pasteboard refused the image".into()))
     }
 
     fn paste_into(&self, f: &Focus) -> Result<bool> {

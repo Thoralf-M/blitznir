@@ -16,6 +16,7 @@ use crate::panel::Panel;
 use crate::panel::view::{self, Msg, RET, Ui};
 use blitznir_core::markdown::select::{self, Piece};
 use blitznir_core::store::Unthought;
+use blitznir_core::tasks;
 use freya::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -37,6 +38,8 @@ struct MessageCard {
     wave: bool,
     /// Its trace's fold, when the band keeps it ([`Reasoning::fold`]).
     fold: Option<State<bool>>,
+    /// The chat's last answer, nothing running: Retry asks for another.
+    retry: bool,
 }
 
 impl Component for MessageCard {
@@ -64,9 +67,15 @@ impl Component for MessageCard {
         if !user {
             let text = m.text.clone();
             let tip = "Write out: paste this answer into the app you came from";
+            let write = panel.clone();
             meta = meta.child(icon_button(&p, icons::OUT, tip, true, move |_| {
-                panel.write_out(Some(text.clone()));
+                write.write_out(Some(text.clone()));
             }));
+            let (i, tip) = (self.index, "Retry: delete this answer and ask again");
+            meta = meta.maybe_child(
+                self.retry
+                    .then(|| icon_button(&p, icons::RETRY, tip, true, move |_| panel.retry(i))),
+            );
         }
         let body = Body {
             text: m.text.clone(),
@@ -99,11 +108,20 @@ impl Component for MessageCard {
             .spacing(4.0)
             .child(meta)
             .maybe_child(thinking)
-            .maybe_child(thumbs(&p, &m.images, None, shown))
+            .maybe_child(thumbs(&p, &m.images, (&again_panel, false), shown))
             .child(body)
             .maybe_child(unanswered)
             .maybe_child(self.wave.then_some(Thinking { base: self.base }))
     }
+}
+
+/// Message `i` is an answer Retry may ask again: to a chat turn, not a
+/// translation ([`tasks::retryable`]), and nothing is running.
+fn retryable(ui: &Ui, i: usize) -> bool {
+    let asked = i.checked_sub(1).and_then(|q| ui.messages.get(q));
+    ui.busy.is_none()
+        && ui.messages.get(i).is_some_and(|m| m.role == "assistant")
+        && asked.is_some_and(|q| q.role == "user" && tasks::retryable(&q.text))
 }
 
 fn note(p: &Palette, text: String) -> Label {
@@ -190,6 +208,7 @@ fn chat(
             base,
             wave: fading && i + 1 == n,
             fold: (live.1 == Some(i)).then_some(live.0),
+            retry: i + 1 == n && retryable(ui, i),
         };
         out.push(rect().key(i).width(Size::fill()).child(card).into());
     }
@@ -204,7 +223,6 @@ fn chat(
         );
     }
     if !ui.messages.is_empty() {
-        let n = ui.messages.len();
         let top = Head {
             title: ui.chat_name.clone(),
             note: format!("{n} message{}", if n == 1 { "" } else { "s" }),

@@ -12,6 +12,7 @@ use std::sync::Mutex;
 
 mod data_url;
 mod history;
+mod images;
 mod marks;
 pub use data_url::{data_url, data_url_bytes};
 pub use history::{HistoryItem, HistoryKind, Made};
@@ -330,40 +331,6 @@ impl Store {
         };
         self.remove_images(&turn);
         saved
-    }
-
-    /// A fresh name for an attached image: named when sent, written later.
-    pub fn image_name() -> String {
-        format!("{}.url", uuid::Uuid::new_v4().simple())
-    }
-
-    /// Store an attached image (the data URL the panel sends) as `name`.
-    pub fn put_image(&self, name: &str, data_url: &str) -> Result<()> {
-        std::fs::create_dir_all(self.paths.images())?;
-        let path = self.paths.images().join(name);
-        Ok(write_atomic(&path, data_url.as_bytes())?)
-    }
-
-    pub fn image(&self, name: &str) -> Result<String> {
-        let name = Path::new(name).file_name().unwrap_or_default(); // never outside images/
-        Ok(std::fs::read_to_string(self.paths.images().join(name))?)
-    }
-
-    /// The data URLs of a message's images; a missing file is skipped.
-    pub fn message_images(&self, m: &Message) -> Vec<String> {
-        m.images
-            .iter()
-            .filter_map(|n| self.image(n).map_err(|e| log::warn!("image {n}: {e}")).ok())
-            .collect()
-    }
-
-    /// Delete the image files of `messages`.
-    pub fn remove_images<'a>(&self, messages: impl IntoIterator<Item = &'a Message>) {
-        for name in messages.into_iter().flat_map(|m| &m.images) {
-            if let Some(file) = Path::new(name).file_name() {
-                let _ = std::fs::remove_file(self.paths.images().join(file));
-            }
-        }
     }
 
     pub fn state(&self) -> State {

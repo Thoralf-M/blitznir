@@ -25,6 +25,8 @@ mod quick;
 mod reasoning;
 #[path = "ui/record.rs"]
 mod record;
+#[path = "ui/retry.rs"]
+mod retry;
 #[path = "ui/select.rs"]
 mod select;
 #[path = "ui/side.rs"]
@@ -49,7 +51,19 @@ use std::sync::Arc;
 type Test = (&'static str, fn(&LaunchProxy));
 
 /// Every test, run in this order on the one proxy.
-const TESTS: [Test; 71] = [
+const TESTS: [Test; 74] = [
+    (
+        "a_translation_has_no_retry",
+        retry::a_translation_has_no_retry,
+    ),
+    (
+        "retry_replaces_the_last_answer",
+        retry::retry_replaces_the_last_answer,
+    ),
+    (
+        "a_chat_image_copies_and_shows_as_attached",
+        retry::a_chat_image_copies_and_shows_as_attached,
+    ),
     (
         "the_edge_over_history_drags_its_share",
         side::the_edge_over_history_drags_its_share,
@@ -124,7 +138,7 @@ const TESTS: [Test; 71] = [
     ),
     (
         "a_settings_help_text_can_be_selected",
-        a_settings_help_text_can_be_selected,
+        pages::a_settings_help_text_can_be_selected,
     ),
     (
         "a_cancelled_batch_rewrite_puts_the_dictation_in",
@@ -344,30 +358,6 @@ fn main() {
         println!("test {name} ... ok");
     }
     println!("ui: {} passed", TESTS.len());
-}
-
-/// A field's help in the Settings form is text to copy, not a picture of it:
-/// a double click selects a word of it.
-fn a_settings_help_text_can_be_selected(proxy: &LaunchProxy) {
-    const HELP: &str = "Up to 6, shown under the text field";
-    let panel = panel(proxy, "help", &[]);
-    panel.show_settings(true);
-    let app = move || ui::app(panel.clone());
-    let (mut t, ()) = TestingRunner::new(app, Size2D::new(WINDOW.0, WINDOW.1), |_| {}, 1.0);
-    settle(&mut t);
-    shot(&mut t, "settings-form");
-    let (lit, at) = paragraph_with(&t, HELP).expect("the help is selectable text");
-    assert!(lit.is_empty(), "nothing selected yet");
-    let word = (f64::from(at.min_x()) + 20.0, f64::from(at.center().y));
-    t.move_cursor(word); // hovered first, as a real pointer is
-    t.click_cursor(word);
-    t.click_cursor(word);
-    settle(&mut t);
-    let (lit, _) = paragraph_with(&t, HELP).expect("still there");
-    assert!(
-        !lit.is_empty(),
-        "a double click selected a word of the help"
-    );
 }
 
 /// The quick action shows the panel when its paste fails, without an open

@@ -93,7 +93,7 @@ pub fn a_drag_past_the_bottom_scrolls_and_selects_on(proxy: &LaunchProxy) {
 }
 
 /// A press on an image shows it large over the window, at most its own size;
-/// Esc closes it, as a press on it does.
+/// Esc closes it, as a press beside it does.
 pub fn a_pressed_image_shows_large(proxy: &LaunchProxy) {
     let mut png = Vec::new();
     image::RgbImage::from_pixel(400, 300, image::Rgb([40, 120, 200]))
@@ -130,7 +130,14 @@ pub fn a_pressed_image_shows_large(proxy: &LaunchProxy) {
     let large = images(&t)[0];
     t.click_cursor((f64::from(large.center().x), f64::from(large.center().y)));
     settle(&mut t);
-    assert_eq!(images(&t).len(), 1, "a press closed it");
+    assert_eq!(
+        images(&t).len(),
+        2,
+        "a press on it left it: it is for a drag"
+    );
+    t.click_cursor((10.0, f64::from(WINDOW.1) - 10.0));
+    settle(&mut t);
+    assert_eq!(images(&t).len(), 1, "a press beside it closed it");
     t.click_cursor((f64::from(thumb.min_x()) + 10.0, f64::from(thumb.center().y)));
     settle(&mut t);
     panel.escape(); // the panel hides: it comes back without the image

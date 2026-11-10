@@ -263,6 +263,18 @@ impl Platform for Linux {
         clip::image().or_else(|| self.x11.image())
     }
 
+    /// As [`Platform::set_clipboard`] does the text, bar the data-control path.
+    fn set_clipboard_image(&self, png: &[u8]) -> Result<()> {
+        let x11 = match clip::focused() {
+            Some(true) => Ok(()),
+            _ => self.x11.set_image(png),
+        };
+        if clip::set_gtk_image(png) {
+            return Ok(());
+        }
+        x11.map_err(|e| Error::Platform(format!("no clipboard: no GTK main loop, X11: {e}")))
+    }
+
     /// Blocks ~150 ms: call it off the main thread, after the panel hid.
     fn paste_into(&self, _f: &Focus) -> Result<bool> {
         self.shortcut(Keyboard::paste)

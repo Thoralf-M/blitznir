@@ -33,6 +33,7 @@ mod thinking;
 mod thumbs;
 mod tip;
 mod transcript;
+mod viewer;
 mod zoom;
 
 use crate::panel::Panel;
@@ -333,5 +334,5 @@ pub fn app(panel: Arc<Panel>) -> impl IntoElement {
         .child(header::Header)
         .child(rule(Size::fill(), Size::px(1.0)))
         .child(body)
-        .maybe_child(thumbs::shown_large(shown))
+        .maybe_child(viewer::large(shown))
 }

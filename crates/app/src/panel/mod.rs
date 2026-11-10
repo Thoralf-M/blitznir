@@ -30,7 +30,7 @@ use blitznir_core::llm::{self, Client};
 use blitznir_core::platform::{Focus, Platform};
 use blitznir_core::store::{Chat, Store};
 use blitznir_core::{Result, lock};
-use freya::prelude::{Bytes, LaunchProxy};
+use freya::prelude::LaunchProxy;
 use freya::winit::window::WindowId;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -233,12 +233,6 @@ impl Panel {
     /// A hidden panel records no hotkey (form.rs).
     fn set_shown(&self, shown: bool) {
         self.with_ui(|ui| (ui.shown, ui.recording) = (shown, ui.recording.filter(|_| shown)));
-    }
-
-    fn shot(&self, url: String, png: Vec<u8>) -> Shot {
-        let id = self.shots.fetch_add(1, Ordering::Relaxed);
-        let png = Bytes::from(png);
-        Shot { id, url, png }
     }
 
     /// Typing in the composer; the panel reads it on Return.

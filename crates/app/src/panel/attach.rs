@@ -1,9 +1,12 @@
 //! The images for the next message: screen capture and image paste.
 
+use super::view::Shot;
 use super::{BUSY, Panel, spawn};
 use blitznir_core::{lock, store};
+use freya::prelude::Bytes;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -12,32 +15,74 @@ const HIDE_SETTLE: Duration = Duration::from_millis(250);
 /// Pasted and captured images go to the model at this size at most.
 const IMAGE_MAX_PX: u32 = 1280;
 
-/// `png` no larger than [`IMAGE_MAX_PX`] on either side, as PNG.
-fn downscale(png: &[u8]) -> std::result::Result<Vec<u8>, String> {
+/// `png` no larger than [`IMAGE_MAX_PX`] on either side, as PNG; None: it
+/// is no larger already.
+fn downscale(png: &[u8]) -> std::result::Result<Option<Vec<u8>>, String> {
     let img = image::load_from_memory(png).map_err(|e| e.to_string())?;
-    let img = if img.width().max(img.height()) > IMAGE_MAX_PX {
-        img.resize(
-            IMAGE_MAX_PX,
-            IMAGE_MAX_PX,
-            image::imageops::FilterType::Triangle,
-        )
-    } else {
-        img
-    };
+    if img.width().max(img.height()) <= IMAGE_MAX_PX {
+        return Ok(None);
+    }
+    let filter = image::imageops::FilterType::Triangle;
+    let img = img.resize(IMAGE_MAX_PX, IMAGE_MAX_PX, filter);
     let mut out = std::io::Cursor::new(Vec::new());
     img.write_to(&mut out, image::ImageFormat::Png)
         .map_err(|e| e.to_string())?;
-    Ok(out.into_inner())
+    Ok(Some(out.into_inner()))
 }
 
 impl Panel {
-    /// Attach `png` (downscaled) for the next Return.
+    /// A new image to show; `full`: as attached, when larger than `png`.
+    pub(super) fn shot(&self, url: String, png: Vec<u8>, full: Option<Vec<u8>>) -> Shot {
+        let id = self.shots.fetch_add(1, Ordering::Relaxed);
+        let (png, full) = (Bytes::from(png), full.map(Bytes::from));
+        let stored = None;
+        Shot {
+            id,
+            url,
+            png,
+            full,
+            stored,
+        }
+    }
+
+    /// `shot` at its largest: as attached, read from images/ for a stored one.
+    pub fn largest(&self, shot: &Shot) -> Bytes {
+        if let Some(full) = &shot.full {
+            return full.clone();
+        }
+        let original = shot.stored.as_deref().and_then(|n| self.store.original(n));
+        original.map_or_else(|| shot.png.clone(), Bytes::from)
+    }
+
+    /// Store `shot` as image `name`: what the model gets, and the original.
+    pub(super) fn put_shot(&self, name: &str, shot: &Shot) -> blitznir_core::Result<()> {
+        self.store.put_image(name, &shot.url)?;
+        match &shot.full {
+            Some(full) => self.store.put_original(name, full),
+            None => Ok(()),
+        }
+    }
+
+    /// A chat image's Copy: the image as attached, on the clipboard.
+    pub fn copy_shot(self: &Arc<Self>, shot: Shot) {
+        let me = self.clone();
+        let copy = move || match me.platform.set_clipboard_image(&me.largest(&shot)) {
+            Ok(()) => me.say("Image copied"),
+            Err(e) => me.fail(format!("Copy failed: {e}")),
+        };
+        if let Err(e) = spawn("copy-image", copy) {
+            self.fail(format!("Copy failed: {e}"));
+        }
+    }
+
+    /// Attach `png` (downscaled, the original kept) for the next Return.
     fn add_image(&self, png: &[u8]) {
-        let png = match downscale(png) {
-            Ok(png) => png,
+        let (png, full) = match downscale(png) {
+            Ok(Some(small)) => (small, Some(png.to_vec())),
+            Ok(None) => (png.to_vec(), None),
             Err(e) => return self.fail(format!("Not attached: {e}")),
         };
-        let shot = self.shot(store::data_url("image/png", &png), png);
+        let shot = self.shot(store::data_url("image/png", &png), png, full);
         self.with_ui(|ui| {
             ui.images.push(shot);
             ui.status.clear();

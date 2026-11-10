@@ -11,7 +11,7 @@ mod flow;
 mod german;
 mod title;
 pub use flow::{
-    IMAGE_QUESTION, Kind, STILL_COPYING, cannot_run, translate_pastes, translates_typed,
+    IMAGE_QUESTION, Kind, STILL_COPYING, cannot_run, retryable, translate_pastes, translates_typed,
     translation_turn,
 };
 #[cfg(test)]

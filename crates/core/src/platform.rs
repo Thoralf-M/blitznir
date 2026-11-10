@@ -118,6 +118,8 @@ pub trait Platform: Send + Sync {
     /// The image on the clipboard as PNG bytes, for the panel's image paste;
     /// None: there is none.
     fn clipboard_image(&self) -> Option<Vec<u8>>;
+    /// `png` on the clipboard as an image: Copy on a chat's image.
+    fn set_clipboard_image(&self, png: &[u8]) -> Result<()>;
     /// Re-activate `f` and paste; false = left on the clipboard.
     fn paste_into(&self, f: &Focus) -> Result<bool>;
     /// Re-activate `f` as `paste_into` does, and nothing else: a job without

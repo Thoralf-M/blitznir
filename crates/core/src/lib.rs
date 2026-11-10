@@ -11,6 +11,7 @@ pub mod jobs;
 pub mod keys;
 pub mod llm;
 pub mod markdown;
+pub mod picture;
 pub mod platform;
 pub mod segmenter;
 pub mod sky;

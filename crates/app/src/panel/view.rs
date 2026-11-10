@@ -6,8 +6,10 @@ use blitznir_core::config::Config;
 use blitznir_core::jobs::Slot;
 use blitznir_core::platform::{Bounds, Focus, Rect};
 use blitznir_core::store::{Chat, HistoryItem, State, Unanswered, Unthought};
-use freya::prelude::Bytes;
 use std::time::{Duration, Instant};
+
+mod shot;
+pub use shot::Shot;
 
 /// A confirmation above the composer (Copied, Deleted …) stands this long;
 /// an error stands until the next message or its x.
@@ -118,22 +120,6 @@ pub enum Tone {
 pub struct Strip {
     pub text: String,
     pub tone: Tone,
-}
-
-/// An image: the data URL goes to the model (empty for a stored one), the
-/// PNG to the screen. Equal by id: comparing the pixels on every render
-/// would cost more than drawing them.
-#[derive(Clone)]
-pub struct Shot {
-    pub id: u64,
-    pub url: String,
-    pub png: Bytes,
-}
-
-impl PartialEq for Shot {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
-    }
 }
 
 /// A chat message as shown.

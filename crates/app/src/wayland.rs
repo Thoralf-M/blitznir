@@ -147,6 +147,12 @@ impl Platform for Wayland {
         self.inner.clipboard_image()
     }
 
+    /// copypasta's Wayland store takes text only, so the inner platform's:
+    /// under Freya GTK never has focus, which leaves X11 through XWayland.
+    fn set_clipboard_image(&self, png: &[u8]) -> Result<()> {
+        self.inner.set_clipboard_image(png)
+    }
+
     fn listen(&self, tx: Sender<KeyEvent>) -> Result<()> {
         self.inner.listen(tx)
     }

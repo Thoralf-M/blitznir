@@ -58,6 +58,13 @@ pub fn translate_pastes(editable: Option<bool>) -> bool {
 }
 
 /// The user turn that stands for a translation shown in the chat.
+/// Whether Retry may ask `question` again as a chat turn: not a
+/// translation's ([`translation_turn`]), whose answer came from Translate's
+/// own prompt, not the chat's.
+pub fn retryable(question: &str) -> bool {
+    question != "Translate" && !question.starts_with("Translate\n\n")
+}
+
 pub fn translation_turn(text: &str) -> String {
     match text.trim() {
         "" => "Translate".into(),
@@ -143,6 +150,8 @@ mod tests {
     fn a_shown_translation_is_a_chat_turn() {
         assert_eq!(translation_turn(" Hallo \n"), "Translate\n\nHallo");
         assert_eq!(translation_turn(""), "Translate");
+        assert!(!retryable(&translation_turn("Hallo")) && !retryable(&translation_turn("")));
+        assert!(retryable("Translate this for me"));
         let k: Kind = serde_json::from_str("\"translate\"").unwrap();
         assert_eq!(k, Kind::Translate);
         let k: Kind = serde_json::from_str("\"rewrite\"").unwrap();
