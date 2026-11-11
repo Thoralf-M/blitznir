@@ -1,7 +1,8 @@
 //! The box by the text (panel/revert.rs): the dictation as it was and
 //! Revert, or the rewrite and Use rewrite, with the switch between the two
 //! for next time; or a translation of text no app can take back, with Copy
-//! and Open in Blitznir (its chat in the panel). A window of its own over the
+//! and Open in Blitznir (its chat in the panel); or, with `rewrite_auto`
+//! off, the dictation as typed with Rewrite. A window of its own over the
 //! text, shown without taking the key focus, so typing goes on in the app and
 //! ends the offer; clicked, its text can be selected and copied, and Esc
 //! closes it.
@@ -25,6 +26,8 @@ pub enum BoxKind {
     Suggest,
     /// A translation of text no app can take back: Copy, Open in Blitznir.
     Translation,
+    /// The dictation as typed (`rewrite_auto = false`): Rewrite runs it.
+    Later,
 }
 
 /// What the box shows.
@@ -33,8 +36,10 @@ pub struct Shown {
     /// The text it offers: the dictation, the rewrite or the translation.
     pub text: String,
     pub kind: BoxKind,
-    /// `[dictation] rewrite_replaces` as the box opens.
-    pub replaces: bool,
+    /// `[dictation] rewrite_replaces` as the box opens, for its Replace /
+    /// Suggest switch; None: no switch (a translation, or a rewrite asked
+    /// for by a click, which always replaces).
+    pub replaces: Option<bool>,
 }
 
 pub fn config(panel: Arc<Panel>, shown: Shown, at: Rect) -> WindowConfig {
@@ -58,7 +63,7 @@ pub fn config(panel: Arc<Panel>, shown: Shown, at: Rect) -> WindowConfig {
 pub fn app(panel: Arc<Panel>, shown: Shown) -> impl IntoElement {
     let theme = use_init_theme(|| style::theme(super::dark()));
     let p = Palette::of(&theme.read());
-    let replaces = use_state(|| shown.replaces);
+    let replaces = use_state(|| shown.replaces.unwrap_or(true));
     let keys = panel.clone();
     let on_key = move |e: Event<KeyboardEventData>| {
         if e.key == Key::Named(NamedKey::Escape) {
@@ -79,6 +84,7 @@ pub fn app(panel: Arc<Panel>, shown: Shown) -> impl IntoElement {
         .padding((2.0, 12.0))
         .child(label().text(act));
     let translation = shown.kind == BoxKind::Translation;
+    let switch = shown.replaces.is_some();
     let (acts, opens) = (panel.clone(), panel.clone());
     let open = translation.then(|| {
         let b = button(&p, Look::Plain)
@@ -92,12 +98,10 @@ pub fn app(panel: Arc<Panel>, shown: Shown) -> impl IntoElement {
         .content(Content::flex())
         .cross_align(Alignment::Center)
         .spacing(10.0)
-        .child(pressable(action, move |_| {
-            if translation {
-                acts.copy_offer();
-            } else {
-                acts.revert();
-            }
+        .child(pressable(action, move |_| match shown.kind {
+            BoxKind::Translation => acts.copy_offer(),
+            BoxKind::Later => acts.rewrite_offered(),
+            BoxKind::Revert | BoxKind::Suggest => acts.revert(),
         }))
         .maybe_child(open)
         .child(
@@ -128,7 +132,7 @@ pub fn app(panel: Arc<Panel>, shown: Shown) -> impl IntoElement {
                 .child(Selectable::new().span(shown.text).width(Size::fill())),
         )
         .child(row)
-        .maybe_child((!translation).then(|| next_time(&p, panel, replaces)))
+        .maybe_child(switch.then(|| next_time(&p, panel, replaces)))
 }
 
 /// The box's title, its button and its hint.
@@ -145,6 +149,11 @@ fn texts(kind: BoxKind) -> (&'static str, &'static str, &'static str) {
             "Type on or click away: the rewrite stays",
         ),
         BoxKind::Translation => ("Translation:", "Copy", "Type on or click away to close"),
+        BoxKind::Later => (
+            "Dictated:",
+            "Rewrite",
+            "Type on or click away: it stays as said",
+        ),
     }
 }
 

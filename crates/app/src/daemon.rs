@@ -175,7 +175,7 @@ fn dictator(
                 }
             }
             Note::Flash(msg) => t.flash(msg),
-            Note::Dictated(text, live) => t.dictated(text, live),
+            Note::Dictated(text, shown) => t.dictated(text, shown),
         },
     )
 }

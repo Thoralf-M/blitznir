@@ -186,7 +186,9 @@ impl Panel {
         original: &str,
     ) {
         let typed = self.dictated_typed();
-        let replaces = !cfg!(target_os = "macos") || self.cfg().dictation.rewrite_replaces;
+        // a rewrite asked for by a click (not automatic) always replaces
+        let d = self.cfg().dictation;
+        let replaces = !cfg!(target_os = "macos") || !d.rewrite_auto || d.rewrite_replaces;
         if let (Some(typed), Route::Paste(to), false) = (typed, route, replaces) {
             return self.suggest(to, typed, original, &out, made);
         }

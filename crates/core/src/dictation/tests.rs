@@ -392,6 +392,7 @@ fn a_rewrite_prompt_holds_batch_text_back_and_never_live() {
     let mut cfg = crate::config::Config::default();
     assert!(!Opts::new(false, &cfg).hold, "no prompt: batch types");
     cfg.dictation.rewrite = "Tidy up: {text}".into();
+    cfg.dictation.rewrite_auto = true;
     assert!(Opts::new(false, &cfg).hold, "batch: the rewrite types");
     assert!(!Opts::new(true, &cfg).hold, "live types as it goes");
     cfg.dictation.rewrite = "  ".into();

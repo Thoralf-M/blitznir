@@ -50,7 +50,8 @@ pub enum Note {
     Phase(Phase),
     /// A short message for the tray.
     Flash(&'static str),
-    /// A session ended with this text (already in the history); live or batch.
+    /// A session ended with this text (already in the history); true: it
+    /// is on the screen (live, or batch not held back for a rewrite).
     Dictated(String, bool),
 }
 
@@ -159,24 +160,31 @@ impl Dictator {
                 return;
             }
         };
+        // as the recording began: the config may change before it ends
+        let opts = Opts::new(live, &lock(&self.cfg));
         let text = match lock(&self.rec).as_mut() {
             Some(rec) => {
-                let opts = Opts::new(live, &lock(&self.cfg));
                 dictation::run(&rx, stop, rec.as_mut(), &*self.platform, &self.store, &opts)
             }
             None => String::new(), // step() starts nothing before ready()
         };
         drop(rx);
         stop.store(true, Ordering::Release); // a flush timeout ends it too
-        self.wrap_up(mode, text, recorder, MIC_RELEASE);
+        self.wrap_up((mode, !opts.hold), text, recorder, MIC_RELEASE);
     }
 
     /// Idle first, then the audio thread: one stuck in the driver must not
     /// leave the app in Finishing, where every hotkey is ignored.
-    fn wrap_up(&self, mode: &str, text: String, recorder: Recorder, within: Duration) {
+    fn wrap_up(
+        &self,
+        (mode, shown): (&str, bool),
+        text: String,
+        recorder: Recorder,
+        within: Duration,
+    ) {
         self.set(Phase::Idle, None);
         log::info!("{mode} dictation done: {} chars", text.chars().count());
-        (self.notify)(Note::Dictated(text, mode == "live"));
+        (self.notify)(Note::Dictated(text, shown));
         match recorder.finish(within) {
             Some(stats) if stats.silent() => (self.notify)(Note::Flash("Microphone silent")), // core logged why
             Some(_) => {}
@@ -214,7 +222,7 @@ mod tests {
         }));
         let t0 = Instant::now();
         d.wrap_up(
-            "live",
+            ("live", true),
             "Hallo.".into(),
             recorder,
             Duration::from_millis(100),
@@ -253,7 +261,12 @@ mod tests {
             ..Stats::default()
         };
         let recorder = Recorder(thread::spawn(move || zeros));
-        d.wrap_up("batch", String::new(), recorder, Duration::from_secs(2));
+        d.wrap_up(
+            ("batch", true),
+            String::new(),
+            recorder,
+            Duration::from_secs(2),
+        );
         let got: Vec<Note> = notes.try_iter().collect();
         assert_eq!(got.last(), Some(&Note::Flash("Microphone silent")));
         std::fs::remove_dir_all(&dir).unwrap();

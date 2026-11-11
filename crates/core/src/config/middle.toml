@@ -15,16 +15,19 @@ silence_rms = 0.01         # a 50 ms block below this RMS counts as silence
 # Hard cap on one segment. Every tick re-decodes the whole segment, so lower
 # this to 10 if live text lags behind your voice.
 segment_max_s = 15.0
-# A prompt every dictation is rewritten with when it ends ({text} marks where
-# the dictation goes, else it is added at the end): batch types the result
-# instead, live replaces what it typed.
-# Uses the picked model; "" = off.
+# A prompt a dictation is rewritten with ({text} marks where the dictation
+# goes, else it is added at the end), by the picked model; "" = off.
 rewrite = ""
+# false: the dictation is typed at once and a box by it offers Rewrite
+# (macOS). true: every dictation is rewritten when it ends, which waits for
+# the model: batch types the result instead, live replaces what it typed.
+rewrite_auto = false
 # After a rewrite, the dictation shows in a small box by the text: Revert puts
 # it back; any key or a click elsewhere keeps the rewrite (macOS).
 revert = true
-# The rewrite replaces the dictation; false: the dictation stays and the box
-# offers the rewrite to take. The box switches this too (macOS).
+# An automatic rewrite replaces the dictation; false: the dictation stays and
+# the box offers the rewrite to take. The box switches this too (macOS). A
+# rewrite asked for in the box (rewrite_auto = false) always replaces.
 rewrite_replaces = true
 # Also rewrite a dictation into Blitznir's own text field.
 rewrite_in_panel = false

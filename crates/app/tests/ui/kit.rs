@@ -212,6 +212,7 @@ pub fn local_config(url: &str) -> Config {
     cfg.panel.effect = blitznir_core::config::Effect::Off;
     cfg.dictation.revert = false;
     cfg.dictation.rewrite = "Fix:\n{text}".into();
+    cfg.dictation.rewrite_auto = true; // most tests run the automatic one
     cfg
 }
 

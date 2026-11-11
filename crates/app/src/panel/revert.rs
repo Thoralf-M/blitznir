@@ -34,7 +34,7 @@ const TALL: f64 = 420.0;
 /// The box's own rows (head, buttons, switch, padding) and its text's line,
 /// at 12 pt: about 6.6 pt a character on average.
 const CHROME: f64 = 100.0;
-/// The Replace/Suggest row, which a translation's box has not.
+/// The Replace/Suggest row, which only an automatic rewrite's box has.
 const SWITCH_ROW: f64 = 26.0;
 const LINE: f64 = 16.0;
 const CHAR_W: f64 = 6.6;
@@ -155,7 +155,13 @@ impl Panel {
 
     /// The box over `to`, which holds `there`, offering `other` in its place;
     /// false: nowhere to put it (neither the text's bounds nor the mouse).
-    fn offer(self: &Arc<Self>, to: Focus, there: &str, other: &str, kind: BoxKind) -> bool {
+    pub(super) fn offer(
+        self: &Arc<Self>,
+        to: Focus,
+        there: &str,
+        other: &str,
+        kind: BoxKind,
+    ) -> bool {
         // where the effect aims: a field or a window is no place for a box
         // by the text, the mouse in it, which just selected the text, is
         let mouse = self.platform.mouse();
@@ -165,12 +171,11 @@ impl Panel {
             all.map(|m| crate::zap::screen(&m).1).collect::<Vec<_>>()
         });
         let (w, h) = size(other);
-        let switch = if kind == BoxKind::Translation {
-            SWITCH_ROW
-        } else {
-            0.0
-        };
-        let size = (w, h - switch);
+        let d = self.cfg().dictation;
+        // the switch is the automatic rewrite's: a clicked one always replaces
+        let auto = matches!(kind, BoxKind::Revert | BoxKind::Suggest) && d.rewrite_auto;
+        let replaces = auto.then_some(d.rewrite_replaces);
+        let size = (w, if auto { h } else { h - SWITCH_ROW });
         let Some(frame) = frame(size, text, mouse, &screens.unwrap_or_default()) else {
             return false;
         };
@@ -192,7 +197,7 @@ impl Panel {
         let shown = revert::Shown {
             text: other.to_string(),
             kind,
-            replaces: self.cfg().dictation.rewrite_replaces,
+            replaces,
         };
         let me = self.clone();
         drop(self.proxy.post_callback(move |ctx| {
@@ -279,6 +284,13 @@ impl Panel {
         if let Err(e) = spawn("revert-keep", back) {
             log::warn!("revert: {e}");
         }
+    }
+
+    /// The open offer ended by its own button: what the app holds, and where.
+    pub(super) fn take_offer(&self) -> Option<(String, Focus)> {
+        let offer = lock(&self.revert).take()?;
+        self.close_box(offer.win);
+        Some((offer.there, offer.to))
     }
 
     fn close_box(&self, win: Option<WindowId>) {

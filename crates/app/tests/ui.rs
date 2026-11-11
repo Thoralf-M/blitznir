@@ -51,7 +51,7 @@ use std::sync::Arc;
 type Test = (&'static str, fn(&LaunchProxy));
 
 /// Every test, run in this order on the one proxy.
-const TESTS: [Test; 74] = [
+const TESTS: [Test; 75] = [
     (
         "a_translation_has_no_retry",
         retry::a_translation_has_no_retry,
@@ -143,6 +143,10 @@ const TESTS: [Test; 74] = [
     (
         "a_cancelled_batch_rewrite_puts_the_dictation_in",
         jobs::a_cancelled_batch_rewrite_puts_the_dictation_in,
+    ),
+    (
+        "a_dictation_offers_its_rewrite_on_click",
+        suggest::a_dictation_offers_its_rewrite_on_click,
     ),
     (
         "a_suggested_rewrite_leaves_the_dictation_until_taken",

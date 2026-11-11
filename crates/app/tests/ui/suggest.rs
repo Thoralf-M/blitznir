@@ -39,6 +39,38 @@ pub fn a_suggested_rewrite_leaves_the_dictation_until_taken(proxy: &LaunchProxy)
     wait_for("Use rewrite to swap it in", taken);
 }
 
+/// `rewrite_auto = false`: the dictation stays as typed and nothing runs;
+/// the box offers Rewrite, which swaps the rewrite in (even in Suggest mode).
+pub fn a_dictation_offers_its_rewrite_on_click(proxy: &LaunchProxy) {
+    let mut fake = FakePlatform::new();
+    fake.mouse = Some((400.0, 400.0));
+    let platform = Arc::new(fake);
+    platform.type_text(SAID).expect("typed"); // batch types it at once now
+    let mut cfg = local_config(&answering_endpoint(REWRITE));
+    cfg.dictation.rewrite_auto = false;
+    cfg.dictation.rewrite_replaces = false; // the automatic rewrite's only
+    let panel = panel_over(proxy, "rewrite-later", &[], platform.clone(), cfg);
+    panel.rewrite_dictation(SAID.into(), true);
+    std::thread::sleep(std::time::Duration::from_millis(300));
+    assert!(panel.ui().busy.is_none(), "no rewrite runs by itself");
+    assert_eq!(platform.screen(), SAID, "the dictation as typed");
+    let taken = || {
+        panel.rewrite_offered(); // a no-op until the offer is up
+        platform.screen() == REWRITE
+    };
+    wait_for("Rewrite to swap the rewrite in", taken);
+    // switched off mid-recording: the batch dictation was held back, so it
+    // is rewritten as the recording began, not offered over nothing typed
+    let platform = Arc::new(FakePlatform::new());
+    let mut cfg = local_config(&answering_endpoint(REWRITE));
+    cfg.dictation.rewrite_auto = false;
+    let panel = panel_over(proxy, "rewrite-held", &[], platform.clone(), cfg);
+    panel.rewrite_dictation(SAID.into(), false);
+    wait_for("the held dictation rewritten", || {
+        platform.screen() == REWRITE
+    });
+}
+
 /// A batch dictation, held back while its rewrite ran, is pasted as said;
 /// with nowhere to put the box (no bounds, no mouse) the rewrite goes on the
 /// clipboard rather than only into the history.
@@ -120,6 +152,7 @@ pub fn the_box_shows_either_text_and_the_switch(proxy: &LaunchProxy) {
             (680.0, 164.0),
             "Use rewrite",
         ),
+        ("box-later", BoxKind::Later, SAID, (400.0, 106.0), "Rewrite"),
         (
             "box-translation",
             BoxKind::Translation,
@@ -133,7 +166,11 @@ pub fn the_box_shows_either_text_and_the_switch(proxy: &LaunchProxy) {
         let shown = Shown {
             text: text.into(),
             kind,
-            replaces: kind != BoxKind::Suggest,
+            replaces: match kind {
+                BoxKind::Revert => Some(true),
+                BoxKind::Suggest => Some(false),
+                BoxKind::Translation | BoxKind::Later => None,
+            },
         };
         let view = move || app(panel.clone(), shown.clone());
         let (mut t, ()) = TestingRunner::new(view, Size2D::new(w, h), |_| {}, 1.0);
@@ -144,12 +181,19 @@ pub fn the_box_shows_either_text_and_the_switch(proxy: &LaunchProxy) {
                 .is_some()
         };
         assert!(has(&t, button), "{name}: {button}");
-        let switch = kind != BoxKind::Translation;
+        let switch = matches!(kind, BoxKind::Revert | BoxKind::Suggest);
         assert_eq!(
             has(&t, "Next time:"),
             switch,
             "{name}: the Replace/Suggest switch"
         );
+        if kind == BoxKind::Suggest {
+            press_label(&mut t, "Replace");
+            settle(&mut t);
+            shot(&mut t, &format!("{name}-replace"));
+            let row = label_where(&t, |l| l == "Suggest").expect("the switch stays");
+            assert!(row.max_y() <= h, "{name}: the switch in the box");
+        }
     }
 }
 

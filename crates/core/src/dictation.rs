@@ -74,7 +74,7 @@ impl Opts {
         Opts {
             live,
             seg: SegConfig::from(d),
-            hold: !live && !d.rewrite.trim().is_empty(),
+            hold: !live && d.rewrite_prompt().is_some(),
             auto_copy: d.auto_copy,
             flush_timeout: Duration::from_secs(30),
             type_every: Duration::from_millis(400),

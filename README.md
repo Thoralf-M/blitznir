@@ -25,9 +25,9 @@ One native Rust app with a menu-bar icon; its windows are drawn by [Freya](https
 ## Features
 
 - **Live dictation** types while you speak; **batch dictation** types it all when you stop.
-- **Rewrite every dictation** (optional prompt): the rewrite replaces what you said, and a small
-  box by the text offers your words back (**Revert**); or, in **Suggest** mode, your words stay
-  and the box offers the rewrite. Two ⌘Z undo either. The box switches the mode.
+- **Rewrite every dictation** (optional prompt): the rewrite replaces what you said, and a box by
+  the text offers your words back (**Revert**); in **Suggest** mode your words stay and it offers
+  the rewrite; not automatic, it offers **Rewrite** at once. Two ⌘Z undo either.
 - **Rewrite in place**: select text, open the panel, press Return. An empty field cleans up the
   text; an instruction ("shorter", "bullet points") does that. The result replaces the selection.
 - **Translate** between your two languages, in place; **quick translate** on its own hotkey.

@@ -280,3 +280,25 @@ fn rain_is_off_unless_asked_for() {
     assert!(!old.panel.rain, "a file from before the key has no rain");
     assert!(Config::parse("[panel]\nrain = true\n").unwrap().panel.rain);
 }
+
+#[test]
+fn the_dictation_rewrite_runs_on_click_or_as_it_ends() {
+    let fix = "[dictation]\nrewrite = \"Fix: {text}\"\n";
+    let click = Config::parse(fix).unwrap().dictation;
+    assert_eq!(click.rewrite_prompt(), None, "on click by default");
+    assert_eq!(click.rewrite_on_click(), Some("Fix: {text}"));
+    let auto = Config::parse(&format!("{fix}rewrite_auto = true\n"))
+        .unwrap()
+        .dictation;
+    assert_eq!(
+        auto.rewrite_prompt(),
+        Some("Fix: {text}"),
+        "held, run as it ends"
+    );
+    assert_eq!(auto.rewrite_on_click(), None);
+    let blank = Config::parse("[dictation]\nrewrite = \"  \"\n")
+        .unwrap()
+        .dictation;
+    let both = (blank.rewrite_prompt(), blank.rewrite_on_click());
+    assert_eq!(both, (None, None), "blank is off");
+}

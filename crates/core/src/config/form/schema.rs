@@ -49,9 +49,11 @@ pub const SECTIONS: &[Section] = &[
             f("dictation", "auto_copy", "Copy every dictation", "Also put it on the clipboard", Kind::Bool),
             f("dictation", "rewrite", "Rewrite every dictation", "A prompt the picked model runs on each dictation when it ends; {text} is the dictation. Empty = off", Kind::Long)
                 .example("Fix punctuation and obvious mistakes; change nothing else:\n{text}"),
+            f("dictation", "rewrite_auto", "Rewrite automatically", "Off: the dictation is typed at once and a box by it offers Rewrite", Kind::Bool)
+                .only_on("macos"),
             f("dictation", "revert", "Offer the dictation back", "After a rewrite, a box by the text shows what you said", Kind::Bool)
                 .only_on("macos"),
-            f("dictation", "rewrite_replaces", "Rewrite replaces the dictation", "Off: your words stay and the box offers the rewrite", Kind::Bool)
+            f("dictation", "rewrite_replaces", "Rewrite replaces the dictation", "Automatic rewrites only. Off: your words stay and the box offers the rewrite", Kind::Bool)
                 .only_on("macos"),
             f("dictation", "rewrite_in_panel", "Rewrite in Blitznir's own field too", "⌘Z takes the rewrite back", Kind::Bool),
             f("dictation", "history_max", "History kept", "Recent results kept of each kind", Kind::Int).advanced(),

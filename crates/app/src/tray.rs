@@ -240,10 +240,10 @@ impl Tray {
 
     /// A dictation ended: the menu's Undo, and its rewrite (the panel's,
     /// when `[dictation] rewrite` is set).
-    pub fn dictated(&self, text: String, live: bool) {
+    pub fn dictated(&self, text: String, shown: bool) {
         self.refresh();
         if let Some(p) = self.panel() {
-            p.rewrite_dictation(text, live);
+            p.rewrite_dictation(text, shown);
         }
     }
 

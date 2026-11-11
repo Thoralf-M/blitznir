@@ -6,6 +6,7 @@ mod actions;
 pub mod form;
 mod linux;
 mod paths;
+mod rewrite;
 mod validate;
 
 use crate::keys::{Action, Key};
@@ -84,6 +85,9 @@ pub struct Dictation {
     pub segment_max_s: f32,
     /// The prompt every finished dictation is rewritten with; "" = off.
     pub rewrite: String,
+    /// The rewrite runs as a dictation ends; false (macOS): a box by the
+    /// text offers it, so it costs nothing unless asked for.
+    pub rewrite_auto: bool,
     /// After a rewrite, the dictation shows by the text with Revert (macOS).
     pub revert: bool,
     /// The rewrite replaces the dictation; false (macOS): the box offers it.
@@ -211,6 +215,7 @@ impl Default for Dictation {
             silence_rms: 0.01,
             segment_max_s: 15.0,
             rewrite: String::new(),
+            rewrite_auto: false,
             revert: true,
             rewrite_replaces: true,
             rewrite_in_panel: false,

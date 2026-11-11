@@ -4,13 +4,17 @@
 //! (core's Opts::hold); a live one typed as it went, and those characters
 //! are taken back just before the result is pasted. A dictation into the
 //! panel's own composer stays as said unless `rewrite_in_panel` is on.
+//! With `rewrite_auto` off nothing waits for the model: the dictation is
+//! typed as said and the box by it offers Rewrite (macOS), which runs the
+//! same rewrite over what was typed.
 
 use super::job::Doing;
 use super::view::Busy;
 use super::{BUSY, Panel, spawn};
+use crate::ui::revert::BoxKind;
 use blitznir_core::llm::CancellationToken;
 use blitznir_core::lock;
-use blitznir_core::platform::Focus;
+use blitznir_core::platform::{Bounds, Focus};
 use blitznir_core::store::Chat;
 use blitznir_core::tasks::{self, Kind};
 use blitznir_core::textproc;
@@ -26,33 +30,88 @@ impl Panel {
         }
     }
 
-    /// A dictation ended with `text` (live: typed as it went). Nothing to
-    /// do without a rewrite prompt.
-    pub fn rewrite_dictation(self: &Arc<Self>, text: String, live: bool) {
-        let prompt = self.cfg().dictation.rewrite;
-        if prompt.trim().is_empty() || text.trim().is_empty() {
+    /// A dictation ended with `text`; `shown`: it is on the screen (live,
+    /// or a batch one not held back for a rewrite). Held back, it is
+    /// rewritten whatever the config says now (it changed mid-recording),
+    /// or typed when no prompt is left.
+    pub fn rewrite_dictation(self: &Arc<Self>, text: String, shown: bool) {
+        let d = self.cfg().dictation;
+        if text.trim().is_empty() {
             return;
         }
         let me = self.clone();
-        if let Err(e) = spawn("dictation-rewrite", move || {
-            me.rewrite_now(text, live, prompt)
-        }) {
+        let auto = if shown {
+            d.rewrite_prompt()
+        } else {
+            d.rewrite_prompt().or(d.rewrite_on_click())
+        };
+        let run = match (auto.map(str::to_owned), d.rewrite_on_click()) {
+            (Some(prompt), _) => spawn("dictation-rewrite", move || {
+                me.rewrite_now(text, shown, prompt)
+            }),
+            (None, Some(_)) if cfg!(target_os = "macos") => {
+                spawn("dictation-offer", move || me.offer_rewrite(&text))
+            }
+            (None, _) if !shown => spawn("dictation-type", move || {
+                me.fallback_type(&text, me.platform.focused_app())
+            }),
+            _ => return,
+        };
+        if let Err(e) = run {
             log::error!("dictation rewrite: {e}");
         }
     }
 
-    fn rewrite_now(self: &Arc<Self>, text: String, live: bool, prompt: String) {
+    /// `rewrite_auto = false`: the box by the dictation, just typed, offers
+    /// its rewrite. Not over our own composer, nor while a job runs.
+    fn offer_rewrite(self: &Arc<Self>, text: &str) {
+        if self.window_focused() || lock(&self.view).job.busy() {
+            return;
+        }
+        let to = self.platform.focused_app();
+        let bounds = self.platform.selection_bounds(&to);
+        let before = std::mem::replace(&mut lock(&self.view).bounds, bounds);
+        if !self.offer(to, text, text, BoxKind::Later) {
+            lock(&self.view).bounds = before; // no box: nothing aims there
+        }
+    }
+
+    /// The box's Rewrite: the dictation it showed, typed in its app,
+    /// rewritten as if `rewrite_auto` were on and the dictation live.
+    pub fn rewrite_offered(self: &Arc<Self>) {
+        let Some((text, to)) = self.take_offer() else {
+            return;
+        };
+        let Some(prompt) = self.cfg().dictation.rewrite_on_click().map(str::to_owned) else {
+            return;
+        };
+        let me = self.clone();
+        let run = move || {
+            if lock(&me.view).job.busy() {
+                me.tray.flash("Not rewritten: busy");
+                return;
+            }
+            let at = (to, me.platform.focused_editable(&to), lock(&me.view).bounds);
+            let typed = textproc::backspaces(&text);
+            me.rewrite_in(text, typed, prompt, at);
+        };
+        if let Err(e) = spawn("dictation-rewrite", run) {
+            log::error!("dictation rewrite: {e}");
+        }
+    }
+
+    fn rewrite_now(self: &Arc<Self>, text: String, shown: bool, prompt: String) {
         if lock(&self.view).job.busy() {
             log::info!("dictation rewrite: a job is running, the dictation stays as it is");
             self.tray.flash("Not rewritten: busy");
-            if !live {
+            if !shown {
                 self.fallback_type(&text, self.platform.focused_app());
             }
             return;
         }
         if self.window_focused() {
-            if !live {
-                // batch held it back for the rewrite: in as said first, so
+            if !shown {
+                // held back for the rewrite: in as said first, so
                 // a failed or cancelled rewrite leaves it, as a live one
                 self.put_in_composer(None, &text);
             }
@@ -64,6 +123,24 @@ impl Panel {
         let prev = self.platform.focused_app();
         let editable = self.platform.focused_editable(&prev);
         let bounds = self.platform.selection_bounds(&prev);
+        let typed = if shown {
+            textproc::backspaces(&text)
+        } else {
+            0
+        };
+        self.rewrite_in(text, typed, prompt, (prev, editable, bounds));
+    }
+
+    /// The rewrite of `text` in `prev`, where `typed` characters of it are
+    /// (0: a batch dictation, held back), pasted over them.
+    fn rewrite_in(
+        self: &Arc<Self>,
+        text: String,
+        typed: usize,
+        prompt: String,
+        (prev, editable, bounds): (Focus, Option<bool>, Option<Bounds>),
+    ) {
+        let live = typed > 0;
         self.cancel();
         self.hide();
         {
@@ -74,7 +151,6 @@ impl Panel {
             v.ui.selection = Some(text.clone());
             v.ui.composer.set("");
             v.ui.images.clear();
-            let typed = if live { textproc::backspaces(&text) } else { 0 };
             v.dictation = Some((prompt, typed));
             v.chat = Chat::new();
             self.sync_chat(&mut v);
