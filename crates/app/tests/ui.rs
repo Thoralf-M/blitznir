@@ -51,7 +51,7 @@ use std::sync::Arc;
 type Test = (&'static str, fn(&LaunchProxy));
 
 /// Every test, run in this order on the one proxy.
-const TESTS: [Test; 75] = [
+const TESTS: [Test; 76] = [
     (
         "a_translation_has_no_retry",
         retry::a_translation_has_no_retry,
@@ -135,6 +135,10 @@ const TESTS: [Test; 75] = [
     (
         "a_slow_scroll_up_near_the_bottom_stays_where_it_went",
         view::a_slow_scroll_up_near_the_bottom_stays_where_it_went,
+    ),
+    (
+        "the_settings_switches_are_slim",
+        pages::the_settings_switches_are_slim,
     ),
     (
         "a_settings_help_text_can_be_selected",

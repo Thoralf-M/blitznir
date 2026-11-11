@@ -315,3 +315,24 @@ pub fn a_settings_help_text_can_be_selected(proxy: &LaunchProxy) {
         "a double click selected a word of the help"
     );
 }
+
+/// The form's switches are a line's height, not Freya's 48×28 ones.
+pub fn the_settings_switches_are_slim(proxy: &LaunchProxy) {
+    let panel = panel(proxy, "switches", &[]);
+    panel.show_settings(true);
+    let app = move || ui::app(panel.clone());
+    let (mut t, ()) = TestingRunner::new(app, Size2D::new(WINDOW.0, WINDOW.1), |_| {}, 1.0);
+    settle(&mut t);
+    press_label(&mut t, "Dictation");
+    settle(&mut t);
+    shot(&mut t, "settings-switches");
+    let sized = |t: &TestingRunner, w: f32, h: f32| {
+        t.find_many(|node, _| {
+            let a = node.layout().area;
+            (a.width() == w && a.height() == h).then_some(())
+        })
+        .len()
+    };
+    assert!(sized(&t, 34.0, 18.0) >= 3, "the slim switches");
+    assert_eq!(sized(&t, 48.0, 28.0), 0, "no fat one left");
+}

@@ -128,7 +128,7 @@ impl Component for Edit {
                 let on = self.value == "true";
                 let flip = panel.clone();
                 let set = move |v: bool| flip.form_set(target, v.to_string());
-                Switch::new(WritableSetter::new(on, set)).into()
+                slim(Switch::new(WritableSetter::new(on, set))).into()
             }
             Kind::Choice(options) => rect()
                 .horizontal()
@@ -343,4 +343,18 @@ impl Component for Form {
                     .children(pages.into_iter().map(page)),
             )
     }
+}
+
+/// A switch the height of a line of the form, not Freya's 48×28 one. The
+/// thumb's travel is what the track leaves inside its padding: 34 − 2·3 =
+/// 12 (toggled thumb) + 16 (its offset).
+fn slim(s: Switch) -> Switch {
+    s.width(34.)
+        .height(18.)
+        .padding(3.)
+        .thumb_size(10.)
+        .toggled_thumb_size(12.)
+        .pressed_thumb_size_offset(2.)
+        .thumb_offset(1.)
+        .toggled_thumb_offset(16.)
 }
