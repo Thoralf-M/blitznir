@@ -19,8 +19,9 @@ segment_max_s = 15.0
 # goes, else it is added at the end), by the picked model; "" = off.
 rewrite = ""
 # false: the dictation is typed at once and a box by it offers Rewrite
-# (macOS). true: every dictation is rewritten when it ends, which waits for
-# the model: batch types the result instead, live replaces what it typed.
+# (macOS; Linux has no box, so there it is always true). true: every
+# dictation is rewritten when it ends, which waits for the model: batch types
+# the result instead, live replaces what it typed.
 rewrite_auto = false
 # After a rewrite, the dictation shows in a small box by the text: Revert puts
 # it back; any key or a click elsewhere keeps the rewrite (macOS).

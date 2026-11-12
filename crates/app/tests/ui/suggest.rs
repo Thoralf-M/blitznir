@@ -23,6 +23,9 @@ fn suggesting(
 /// A live dictation stays as typed while the rewrite is only offered; Use
 /// rewrite swaps it in.
 pub fn a_suggested_rewrite_leaves_the_dictation_until_taken(proxy: &LaunchProxy) {
+    if !cfg!(target_os = "macos") {
+        return; // the box by the text is macOS's
+    }
     let mut fake = FakePlatform::new();
     fake.mouse = Some((400.0, 400.0)); // the box goes above it
     let platform = Arc::new(fake);
@@ -41,7 +44,33 @@ pub fn a_suggested_rewrite_leaves_the_dictation_until_taken(proxy: &LaunchProxy)
 
 /// `rewrite_auto = false`: the dictation stays as typed and nothing runs;
 /// the box offers Rewrite, which swaps the rewrite in (even in Suggest mode).
+/// Linux has no box: there it is rewritten as it ends.
 pub fn a_dictation_offers_its_rewrite_on_click(proxy: &LaunchProxy) {
+    if cfg!(target_os = "macos") {
+        offered_on_click(proxy);
+    } else {
+        let platform = Arc::new(FakePlatform::new());
+        platform.type_text(SAID).expect("typed");
+        let mut cfg = local_config(&answering_endpoint(REWRITE));
+        cfg.dictation.rewrite_auto = false;
+        let panel = panel_over(proxy, "rewrite-linux", &[], platform.clone(), cfg);
+        panel.rewrite_dictation(SAID.into(), true);
+        wait_for("rewritten as it ends", || platform.screen() == REWRITE);
+    }
+    // switched off mid-recording: the batch dictation was held back, so it
+    // is rewritten as the recording began, not offered over nothing typed
+    let platform = Arc::new(FakePlatform::new());
+    let mut cfg = local_config(&answering_endpoint(REWRITE));
+    cfg.dictation.rewrite_auto = false;
+    let panel = panel_over(proxy, "rewrite-held", &[], platform.clone(), cfg);
+    panel.rewrite_dictation(SAID.into(), false);
+    wait_for("the held dictation rewritten", || {
+        platform.screen() == REWRITE
+    });
+}
+
+/// macOS: the box's Rewrite.
+fn offered_on_click(proxy: &LaunchProxy) {
     let mut fake = FakePlatform::new();
     fake.mouse = Some((400.0, 400.0));
     let platform = Arc::new(fake);
@@ -59,22 +88,15 @@ pub fn a_dictation_offers_its_rewrite_on_click(proxy: &LaunchProxy) {
         platform.screen() == REWRITE
     };
     wait_for("Rewrite to swap the rewrite in", taken);
-    // switched off mid-recording: the batch dictation was held back, so it
-    // is rewritten as the recording began, not offered over nothing typed
-    let platform = Arc::new(FakePlatform::new());
-    let mut cfg = local_config(&answering_endpoint(REWRITE));
-    cfg.dictation.rewrite_auto = false;
-    let panel = panel_over(proxy, "rewrite-held", &[], platform.clone(), cfg);
-    panel.rewrite_dictation(SAID.into(), false);
-    wait_for("the held dictation rewritten", || {
-        platform.screen() == REWRITE
-    });
 }
 
 /// A batch dictation, held back while its rewrite ran, is pasted as said;
 /// with nowhere to put the box (no bounds, no mouse) the rewrite goes on the
 /// clipboard rather than only into the history.
 pub fn a_suggested_batch_rewrite_pastes_the_dictation(proxy: &LaunchProxy) {
+    if !cfg!(target_os = "macos") {
+        return; // the box by the text is macOS's
+    }
     let platform = Arc::new(FakePlatform::new());
     let panel = suggesting(proxy, "suggest-batch", &platform);
     panel.rewrite_dictation(SAID.into(), false);

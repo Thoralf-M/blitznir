@@ -39,10 +39,15 @@ pub fn a_quick_translation_replaces_the_selection(proxy: &LaunchProxy) {
 
 /// `[translate] on_select`: a mouse selection gets the Translate button,
 /// whose click brings the app back and translates in place; off, or with
-/// nothing selected, no button.
+/// nothing selected, or off macOS (no place for it), no button.
 pub fn a_mouse_selection_offers_translate(proxy: &LaunchProxy) {
     let wait = || std::thread::sleep(std::time::Duration::from_millis(400));
-    for (name, on, text) in [("pick-off", false, "Hello"), ("pick-none", true, " ")] {
+    let mac = cfg!(target_os = "macos");
+    let mut cases = vec![("pick-off", false, "Hello"), ("pick-none", true, " ")];
+    if !mac {
+        cases.push(("pick-linux", true, "Hello"));
+    }
+    for (name, on, text) in cases {
         let mut fake = FakePlatform::new();
         fake.mouse = Some((400.0, 400.0));
         *lock(&fake.selection) = Some(text.into());
@@ -55,6 +60,9 @@ pub fn a_mouse_selection_offers_translate(proxy: &LaunchProxy) {
         panel.translate_picked(); // a no-op: no button
         wait();
         assert!(lock(&platform.refocused).is_empty(), "{name}: no button");
+    }
+    if !mac {
+        return;
     }
     let mut fake = FakePlatform::new();
     fake.mouse = Some((400.0, 400.0));
@@ -121,6 +129,9 @@ pub fn a_quick_translation_on_a_page_shows_the_panel(proxy: &LaunchProxy) {
 /// translation shows in the box by the text, not the panel; Open in Blitznir
 /// then shows the panel on its chat.
 pub fn a_quick_translation_on_a_page_shows_the_box(proxy: &LaunchProxy) {
+    if !cfg!(target_os = "macos") {
+        return; // the box by the text is macOS's
+    }
     let mut fake = FakePlatform::new();
     fake.editable = Some(false);
     fake.mouse = Some((400.0, 400.0));

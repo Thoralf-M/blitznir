@@ -285,8 +285,14 @@ fn rain_is_off_unless_asked_for() {
 fn the_dictation_rewrite_runs_on_click_or_as_it_ends() {
     let fix = "[dictation]\nrewrite = \"Fix: {text}\"\n";
     let click = Config::parse(fix).unwrap().dictation;
-    assert_eq!(click.rewrite_prompt(), None, "on click by default");
-    assert_eq!(click.rewrite_on_click(), Some("Fix: {text}"));
+    // Linux has no box to offer it: there it runs as it ends all the same
+    let (now, offered) = if cfg!(target_os = "macos") {
+        (None, Some("Fix: {text}"))
+    } else {
+        (Some("Fix: {text}"), None)
+    };
+    assert_eq!(click.rewrite_prompt(), now, "on click by default (macOS)");
+    assert_eq!(click.rewrite_on_click(), offered);
     let auto = Config::parse(&format!("{fix}rewrite_auto = true\n"))
         .unwrap()
         .dictation;

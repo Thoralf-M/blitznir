@@ -71,7 +71,8 @@ pub fn the_composer_tools_never_overlap(proxy: &LaunchProxy) {
         let (mut t, ()) = TestingRunner::new(app, Size2D::new(w as f32, WINDOW.1), |_| {}, 1.0);
         settle(&mut t);
         let translate = label_at(&t, "Translate").expect("the Translate button");
-        let (_, hint) = paragraph_with(&t, "Return runs").expect("the placeholder");
+        let runs = format!("{} runs", blitznir_app::panel::view::RET); // Enter on Linux
+        let (_, hint) = paragraph_with(&t, &runs).expect("the placeholder");
         assert!(
             hint.max_y() <= translate.min_y(),
             "at {w} pt the placeholder is cut: it ends at {}, the buttons start at {}",
