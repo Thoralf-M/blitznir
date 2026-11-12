@@ -62,7 +62,7 @@ fn glow_frames() -> Vec<Icon> {
         .collect()
 }
 
-/// None: a Linux tray icon cannot animate (every set_icon writes a PNG).
+/// None: the Linux tray shows no glow, only the state's icon.
 #[cfg(target_os = "linux")]
 fn glow_frames() -> Vec<Icon> {
     vec![]
@@ -144,9 +144,12 @@ impl Tray {
             let shown = lock(&self.shown);
             (shown.phase, shown.text.clone())
         };
-        let builder = TrayIconBuilder::new()
-            .with_icon(state_icon(phase))
-            .with_icon_as_template(cfg!(target_os = "macos"))
+        // a template on macOS: drawn light or dark to suit the menu bar
+        #[cfg(target_os = "macos")]
+        let builder = TrayIconBuilder::new().with_icon_templated(state_icon(phase));
+        #[cfg(target_os = "linux")]
+        let builder = TrayIconBuilder::new().with_icon(state_icon(phase));
+        let builder = builder
             .with_tooltip(tooltip(&text))
             .with_menu(Box::new(build_menu(&self.menu_data())));
         #[cfg(target_os = "macos")]
@@ -219,7 +222,10 @@ impl Tray {
     pub fn glow(&self, level: usize) {
         if let Some(img) = self.glow.get(level).cloned() {
             // plain set_icon drops the template flag: black in a dark menu bar
-            self.on_icon(move |icon| drop(icon.set_icon_with_as_template(Some(img), true)));
+            #[cfg(target_os = "macos")]
+            self.on_icon(move |icon| drop(icon.set_icon_templated(Some(img))));
+            #[cfg(target_os = "linux")]
+            drop(img); // no frames there (glow_frames)
         }
     }
 

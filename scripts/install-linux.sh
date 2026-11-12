@@ -13,13 +13,12 @@ say() { printf '==> %s\n' "$*"; }
 relogin=
 [ $# -eq 0 ] || { say "usage: $0"; exit 2; }
 
-# 1. packages: build deps and the tray library (dlopened at runtime).
+# 1. packages: the build's (the tray speaks D-Bus itself: no library).
 #    Screenshots need nothing: the default [capture] cmd = "" is the
 #    desktop's screenshot portal.
 if command -v apt-get >/dev/null 2>&1; then
-    # libxdo: Freya's tray menus (muda) link it
-    pkgs="build-essential curl pkg-config libssl-dev libgtk-3-dev libxdo-dev
-          libayatana-appindicator3-dev libasound2-dev libxkbcommon-dev"
+    pkgs="build-essential curl pkg-config libssl-dev libgtk-3-dev libasound2-dev
+          libxkbcommon-dev"
     missing=$(for p in $pkgs; do dpkg -s "$p" >/dev/null 2>&1 || printf '%s ' "$p"; done)
     if [ -n "$missing" ]; then
         say "installing: $missing"
@@ -30,9 +29,8 @@ if command -v apt-get >/dev/null 2>&1; then
         say "packages: all present"
     fi
 elif command -v dnf >/dev/null 2>&1; then
-    pkgs="gcc gcc-c++ make curl pkgconf-pkg-config openssl-devel gtk3-devel libxdo-devel
-          libappindicator-gtk3-devel alsa-lib-devel libxkbcommon-devel
-          gnome-shell-extension-appindicator"
+    pkgs="gcc gcc-c++ make curl pkgconf-pkg-config openssl-devel gtk3-devel
+          alsa-lib-devel libxkbcommon-devel gnome-shell-extension-appindicator"
     missing=$(for p in $pkgs; do rpm -q "$p" >/dev/null 2>&1 || printf '%s ' "$p"; done)
     if [ -n "$missing" ]; then
         say "installing: $missing"
@@ -42,8 +40,8 @@ elif command -v dnf >/dev/null 2>&1; then
         say "packages: all present"
     fi
 else
-    say "neither apt nor dnf: install the dev packages of gtk3, libxdo,"
-    say "libayatana-appindicator3, alsa, libxkbcommon and openssl, and run this again"
+    say "neither apt nor dnf: install the dev packages of gtk3, alsa,"
+    say "libxkbcommon and openssl, and run this again"
     exit 1
 fi
 

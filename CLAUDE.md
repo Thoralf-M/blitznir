@@ -102,7 +102,7 @@ TOML refused in the text · 12 restart keeps permissions (mac) · 13 Linux: item
   moves APIs. Its skia bindings need `prettyplease` 0.3 in Cargo.lock (0.2 does not build against
   the `syn` 3 that serde pulls in).
 - Never write Freya from memory: models know the dead 0.3 API. Clone the tag in use
-  (`git clone --depth 1 -b v0.5.0-rc.13 https://github.com/marc2332/freya`) and read its
+  (`git clone --depth 1 -b v0.5.2 https://github.com/marc2332/freya`) and read its
   website/public/llms.txt, examples/ and crates/freya/src/_docs. Custom drawing is a
   rect's `.background(RenderCallback::new(…))` (rc.9 removed `canvas`).
 - wayland.rs (Linux, the selection on winit's Wayland connection) is crates/app's one OS file and

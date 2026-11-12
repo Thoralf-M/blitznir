@@ -39,6 +39,8 @@ impl LayoutExt for Selectable {
 
 impl ContainerExt for Selectable {}
 
+impl TextOverflowExt for Selectable {}
+
 impl AccessibilityExt for Selectable {
     fn accessibility_data_mut(&mut self) -> &mut AccessibilityData {
         &mut self.accessibility
@@ -297,9 +299,10 @@ impl Component for Selectable {
             .layer(self.layer)
             .max_lines(self.max_lines)
             .a11y_id(a11y_id)
-            // no Tab stop: a press focuses it all the same (request_focus
-            // takes any node), and the focus brings it ⌘C and the arrows
-            .a11y_focusable(false)
+            // no Tab stop (Tab takes Enabled only), yet a press focuses it
+            // (request_focus refuses Disabled), and the focus brings it ⌘C
+            // and the arrows
+            .a11y_focusable(Focusable::Unknown)
             .holder(holder.read().clone())
             .cursor([CursorIcon::Default, CursorIcon::Text][usize::from(beam())])
             .cursor_color(Color::BLACK)

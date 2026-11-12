@@ -33,7 +33,7 @@ dirs = "6"
 # `code-editor` = the Settings tab's editor, `engine` = Skia's paints and
 # paths for the lightning canvas; answers are core's markdown blocks as
 # SelectableText (ui/answer.rs), not freya's MarkdownViewer: that selects nothing
-freya = { version = "=0.5.0-rc.13", features = ["tray", "code-editor", "engine"] }
+freya = { version = "=0.5.2", features = ["tray", "code-editor", "engine"] }
 # the tray's template icon; pasted and captured images downscaled to 1280 px;
 # already in Freya's tree
 image = { version = "0.25", default-features = false, features = ["png"] }
@@ -59,4 +59,4 @@ workspace = true
 
 [dev-dependencies]
 # headless rendering and input for tests/ui.rs, the same version as freya
-freya-testing = "=0.5.0-rc.13"
+freya-testing = "=0.5.2"
