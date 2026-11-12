@@ -2,15 +2,18 @@
 //! "a"), /dev/input rescanned for keyboards plugged in later. Listen-only: no
 //! grab, so nothing is ever swallowed.
 
-use blitznir_core::lock;
-use blitznir_core::platform::{Key, KeyEvent};
+use blitznir_core::{
+    lock,
+    platform::{Key, KeyEvent},
+};
 use evdev::{Device, EventSummary, KeyCode};
-use std::collections::{HashMap, HashSet};
-use std::path::{Path, PathBuf};
-use std::sync::mpsc::Sender;
-use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::Duration;
+use std::{
+    collections::{HashMap, HashSet},
+    path::{Path, PathBuf},
+    sync::{Arc, Mutex, mpsc::Sender},
+    thread,
+    time::Duration,
+};
 
 /// Our uinput device; the listener skips it or it would hear our own typing.
 pub const OWN_DEVICE: &str = "blitznir-kbd";

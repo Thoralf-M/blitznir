@@ -2,17 +2,14 @@
 //! edge, an image shown large, a failed turn's Send again in a narrow window.
 
 use super::kit::*;
-use blitznir_app::panel::Mode;
-use blitznir_app::ui;
-use blitznir_core::lock;
-use blitznir_core::platform::fake::FakePlatform;
-use blitznir_core::store::Unanswered;
-use freya::elements::image::Image;
-use freya::elements::paragraph::ParagraphElement;
-use freya::prelude::{Area, Key, LaunchProxy, NamedKey, Size2D};
+use blitznir_app::{panel::Mode, ui};
+use blitznir_core::{lock, platform::fake::FakePlatform, store::Unanswered};
+use freya::{
+    elements::{image::Image, paragraph::ParagraphElement},
+    prelude::{Area, Key, LaunchProxy, NamedKey, Size2D},
+};
 use freya_testing::prelude::*;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 /// Over the transcript, right of the sidebar.
 const TRANSCRIPT: (f64, f64) = (500.0, 250.0);

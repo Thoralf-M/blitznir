@@ -1,8 +1,10 @@
 //! The history's rows: capped per kind, kept with what made them, deleted
 //! one at a time or all of a kind.
 
-use super::super::tests::{made, texts, tmp};
-use super::*;
+use super::{
+    super::tests::{made, texts, tmp},
+    *,
+};
 use std::os::unix::fs::PermissionsExt;
 
 #[test]

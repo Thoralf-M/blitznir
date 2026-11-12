@@ -1,7 +1,9 @@
 use super::*;
-use crate::config::VISION_MODELS;
-use crate::llm::mock::{Reply, dead_endpoint, mock};
-use crate::tasks::hide_regex;
+use crate::{
+    config::VISION_MODELS,
+    llm::mock::{Reply, dead_endpoint, mock},
+    tasks::hide_regex,
+};
 use serde_json::json;
 
 #[test]

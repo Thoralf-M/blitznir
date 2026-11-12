@@ -2,10 +2,14 @@
 
 use super::{Bounds, CopyToken, Focus, KeyEvent, Platform, Recognizer, Rect, Token};
 use crate::{Result, lock};
-use std::path::Path;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::Sender;
-use std::sync::{Arc, Mutex};
+use std::{
+    path::Path,
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, Ordering},
+        mpsc::Sender,
+    },
+};
 
 type Hook = Box<dyn FnMut(&str) -> Result<()> + Send>;
 

@@ -5,11 +5,11 @@
 //! A pure function of time, drawn with the [`Pen`]; and the chat's trail of
 //! particles over the text just written.
 
-use super::Pt;
-use super::pen::Pen;
-use super::sprite::Rgb;
-use blitznir_core::beam::{ease, h2, noise1, smooth, walk};
-use blitznir_core::wave::{Heads, TAIL, TIP_SLOW, TRAIL_SECS};
+use super::{Pt, pen::Pen, sprite::Rgb};
+use blitznir_core::{
+    beam::{ease, h2, noise1, smooth, walk},
+    wave::{Heads, TAIL, TIP_SLOW, TRAIL_SECS},
+};
 use std::f32::consts::TAU;
 
 const DIM: Rgb = [0.8, 0.88, 1.0];

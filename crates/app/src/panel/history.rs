@@ -2,11 +2,12 @@
 //! from a section's trash or the tray. The sidebar, the view and the
 //! tray's Recent follow.
 
-use super::view;
-use super::{BUSY, Panel};
+use super::{BUSY, Panel, view};
 use blitznir::session::label;
-use blitznir_core::lock;
-use blitznir_core::store::{Chat, HistoryItem, HistoryKind};
+use blitznir_core::{
+    lock,
+    store::{Chat, HistoryItem, HistoryKind},
+};
 
 /// A sidebar list: history rows of one kind, or the saved chats.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

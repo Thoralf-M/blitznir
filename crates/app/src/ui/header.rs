@@ -3,13 +3,17 @@
 //! (panel/window.rs), the header leaves room for the traffic lights, and a
 //! drag on its empty parts moves the window.
 
-use super::icons::{self, icon, icon_button};
-use super::style::{Look, Palette, button, line, press_keys, pressable, ring, use_palette};
-use super::tip::Tip;
-use super::zoom::zoom_drag;
-use super::{NARROW, Peek};
-use crate::panel::Panel;
-use crate::panel::view::{MOD, ModelRow, Ui};
+use super::{
+    NARROW, Peek,
+    icons::{self, icon, icon_button},
+    style::{Look, Palette, button, line, press_keys, pressable, ring, use_palette},
+    tip::Tip,
+    zoom::zoom_drag,
+};
+use crate::panel::{
+    Panel,
+    view::{MOD, ModelRow, Ui},
+};
 use freya::prelude::*;
 use std::sync::Arc;
 

@@ -3,14 +3,19 @@
 
 mod resend;
 
-use super::job::Doing;
-use super::view::{self, Busy, ChatRow, Msg, Shot, View};
-use super::{BUSY, Panel, Said};
-use blitznir_core::config::{Config, Endpoint};
-use blitznir_core::llm::{Answer, CancellationToken};
-use blitznir_core::store::{self, Chat, Message, Store, Unanswered, Unthought};
-use blitznir_core::tasks::{self, Turn};
-use blitznir_core::{Error, Result, lock, now_stamp};
+use super::{
+    BUSY, Panel, Said,
+    job::Doing,
+    view::{self, Busy, ChatRow, Msg, Shot, View},
+};
+use blitznir_core::{
+    Error, Result,
+    config::{Config, Endpoint},
+    llm::{Answer, CancellationToken},
+    lock, now_stamp,
+    store::{self, Chat, Message, Store, Unanswered, Unthought},
+    tasks::{self, Turn},
+};
 use std::sync::{Arc, Mutex};
 
 pub(super) fn message(role: &str, content: &str, images: Vec<String>) -> Message {

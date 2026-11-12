@@ -20,18 +20,26 @@ pub mod wave;
 
 use crate::tray::{GLOW_PEAK, Tray};
 pub use beam::{Hum, HumSound};
-use blitznir_core::lock;
-use blitznir_core::platform::{Bounds, Rect};
-use blitznir_core::sky::Sky;
+use blitznir_core::{
+    lock,
+    platform::{Bounds, Rect},
+    sky::Sky,
+};
 use bolt::{Bolt, Rng};
-use freya::prelude::{LaunchProxy, RendererContext};
-use freya::winit::window::WindowId;
+use freya::{
+    prelude::{LaunchProxy, RendererContext},
+    winit::window::WindowId,
+};
 pub(crate) use overlay::screen;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::mpsc::{self, Sender};
-use std::sync::{Arc, Mutex, Weak};
-use std::thread;
-use std::time::{Duration, Instant};
+use std::{
+    sync::{
+        Arc, Mutex, Weak,
+        atomic::{AtomicU64, Ordering},
+        mpsc::{self, Sender},
+    },
+    thread,
+    time::{Duration, Instant},
+};
 use thunder_synth::Thunder;
 
 /// One glow frame per tick, up to the peak (the bolt fires) and back down.

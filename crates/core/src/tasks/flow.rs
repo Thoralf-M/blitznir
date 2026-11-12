@@ -78,8 +78,7 @@ pub const IMAGE_QUESTION: &str = "What do you see in this image?";
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::platform::Platform;
-    use crate::platform::fake::FakePlatform;
+    use crate::platform::{Platform, fake::FakePlatform};
 
     #[test]
     fn translate_replaces_unless_the_app_says_read_only() {

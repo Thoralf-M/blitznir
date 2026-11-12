@@ -2,16 +2,18 @@
 //! its own. core's [`blitznir_core::jobs::Slot`] decides whether its result
 //! is still wanted, so an esc that comes late never lets a cancelled rewrite paste.
 
-use super::view::{Busy, View};
-use super::{BUSY, Panel, Said, spawn};
+use super::{
+    BUSY, Panel, Said, spawn,
+    view::{Busy, View},
+};
 use crate::zap::Effect;
-use blitznir_core::config;
-use blitznir_core::jobs::Unfinished;
-use blitznir_core::llm::CancellationToken;
-use blitznir_core::store::Unanswered;
-use blitznir_core::{Error, Result, lock, tasks};
-use std::sync::Arc;
-use std::time::{Duration, Instant};
+use blitznir_core::{
+    Error, Result, config, jobs::Unfinished, llm::CancellationToken, lock, store::Unanswered, tasks,
+};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 /// A streamed answer reaches the window at most this often.
 const DELTA_EVERY: Duration = Duration::from_millis(40);

@@ -8,14 +8,15 @@
 //! ends the offer; clicked, its text can be selected and copied, and Esc
 //! closes it.
 
-use super::icons::{self, icon_button};
-use super::section::choice;
-use super::select::Selectable;
-use super::style::{self, Look, Palette, button, head, pressable};
+use super::{
+    icons::{self, icon_button},
+    section::choice,
+    select::Selectable,
+    style::{self, Look, Palette, button, head, pressable},
+};
 use crate::panel::Panel;
 use blitznir_core::platform::Rect;
-use freya::prelude::*;
-use freya::winit::window::WindowLevel;
+use freya::{prelude::*, winit::window::WindowLevel};
 use std::sync::Arc;
 
 /// Which box it is.

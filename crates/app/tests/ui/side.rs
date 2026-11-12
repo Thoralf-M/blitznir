@@ -2,8 +2,7 @@
 //! state.json keeps where.
 
 use super::kit::*;
-use blitznir_app::panel::List;
-use blitznir_app::ui;
+use blitznir_app::{panel::List, ui};
 use blitznir_core::store::{Chat, HistoryKind, Store};
 use freya::prelude::{LaunchProxy, Size2D};
 use freya_testing::prelude::*;

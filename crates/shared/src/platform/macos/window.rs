@@ -1,13 +1,10 @@
 //! The panel window's AppKit side: what winit does not tell or set.
 
 use blitznir_core::platform::Rect;
-use objc2::rc::Retained;
-use objc2::runtime::AnyObject;
-use objc2::{class, msg_send};
+use objc2::{class, msg_send, rc::Retained, runtime::AnyObject};
 use objc2_core_foundation::CGRect;
 use objc2_foundation::NSString;
-use std::ffi::c_void;
-use std::ptr::NonNull;
+use std::{ffi::c_void, ptr::NonNull};
 
 /// A double click on the title bar does nothing in this app: the Freya
 /// panel draws its header under a see-through title bar, and macOS takes two

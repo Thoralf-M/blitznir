@@ -7,18 +7,30 @@
 //! (the X11 path), is the shared platform's. The Freya shell's only OS code.
 #![allow(unsafe_code)]
 
-use blitznir_core::platform::{Bounds, CopyToken, Focus, KeyEvent, Platform, Rect};
-use blitznir_core::{Result, lock};
-use copypasta::ClipboardProvider;
-use copypasta::wayland_clipboard::{Clipboard, Primary, create_clipboards_from_external};
-use freya::prelude::{LaunchProxy, RendererContext};
-use freya::winit::event_loop::OwnedDisplayHandle;
-use freya::winit::raw_window_handle::{HasDisplayHandle, RawDisplayHandle};
-use std::path::Path;
-use std::sync::mpsc::{self, Sender};
-use std::sync::{Arc, Mutex, Weak};
-use std::thread;
-use std::time::{Duration, Instant};
+use blitznir_core::{
+    Result, lock,
+    platform::{Bounds, CopyToken, Focus, KeyEvent, Platform, Rect},
+};
+use copypasta::{
+    ClipboardProvider,
+    wayland_clipboard::{Clipboard, Primary, create_clipboards_from_external},
+};
+use freya::{
+    prelude::{LaunchProxy, RendererContext},
+    winit::{
+        event_loop::OwnedDisplayHandle,
+        raw_window_handle::{HasDisplayHandle, RawDisplayHandle},
+    },
+};
+use std::{
+    path::Path,
+    sync::{
+        Arc, Mutex, Weak,
+        mpsc::{self, Sender},
+    },
+    thread,
+    time::{Duration, Instant},
+};
 
 /// How long [`Platform::finish_copy`] waits for the panel's focus: it is
 /// made and shown asynchronously and asked for focus again 250 ms later.

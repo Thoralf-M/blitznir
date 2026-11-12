@@ -4,11 +4,11 @@
 //! from right for every modifier; only what a hotkey can be is taken: a
 //! modifier, double-tapped, or an F-key.
 
-use super::keys::field_keys;
-use super::style::{Look, Palette, button, pressable, use_palette};
-use crate::panel::Panel;
-use crate::panel::form::Target;
-use crate::panel::view::Ui;
+use super::{
+    keys::field_keys,
+    style::{Look, Palette, button, pressable, use_palette},
+};
+use crate::panel::{Panel, form::Target, view::Ui};
 use freya::prelude::*;
 use std::sync::Arc;
 

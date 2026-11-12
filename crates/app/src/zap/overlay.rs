@@ -4,21 +4,31 @@
 //! itself, a faint light over it flashes with them; the beam never covers
 //! it. White and grey only: the light is the glow.
 
-use super::bolt::{Bolt, Pt, flicker};
-use super::{Scene, Zap, beam};
-use blitznir_core::platform::{Bounds, Rect};
-use blitznir_core::sky::{self, Sky};
-use freya::engine::prelude::{
-    BlurStyle, Canvas as SkCanvas, Color4f, Colors, Gradient, Interpolation, MaskFilter, Paint,
-    PaintStyle, PathBuilder, RRect, SkPath, SkRect, TileMode, shaders,
+use super::{
+    Scene, Zap, beam,
+    bolt::{Bolt, Pt, flicker},
 };
-use freya::prelude::*;
-use freya::winit::event_loop::ActiveEventLoop;
-use freya::winit::monitor::MonitorHandle;
-use freya::winit::window::{WindowAttributes, WindowLevel};
-use std::slice;
-use std::sync::Arc;
-use std::time::{Duration, Instant};
+use blitznir_core::{
+    platform::{Bounds, Rect},
+    sky::{self, Sky},
+};
+use freya::{
+    engine::prelude::{
+        BlurStyle, Canvas as SkCanvas, Color4f, Colors, Gradient, Interpolation, MaskFilter, Paint,
+        PaintStyle, PathBuilder, RRect, SkPath, SkRect, TileMode, shaders,
+    },
+    prelude::*,
+    winit::{
+        event_loop::ActiveEventLoop,
+        monitor::MonitorHandle,
+        window::{WindowAttributes, WindowLevel},
+    },
+};
+use std::{
+    slice,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 /// A flicker frame this often while it flashes, dips and strikes again
 /// (its first fifth), half as often while it dies away; nothing is drawn
@@ -103,8 +113,7 @@ fn place(attrs: WindowAttributes, el: &ActiveEventLoop, area: Rect) -> WindowAtt
     let attrs = attrs.with_window_level(WindowLevel::AlwaysOnTop);
     #[cfg(target_os = "macos")]
     {
-        use freya::winit::dpi::LogicalPosition;
-        use freya::winit::platform::macos::WindowAttributesExtMacOS;
+        use freya::winit::{dpi::LogicalPosition, platform::macos::WindowAttributesExtMacOS};
         let _ = el;
         attrs
             .with_position(LogicalPosition::new(area.x, area.y))

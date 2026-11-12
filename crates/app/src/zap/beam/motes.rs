@@ -5,9 +5,11 @@
 //! streaks beside it, dust in the air, embers off the flare; and the flare
 //! on the line's top edge with its spray of sparks.
 
-use super::Pt;
-use super::draw::{Frame, flicker};
-use super::paint::{Pen, c4};
+use super::{
+    Pt,
+    draw::{Frame, flicker},
+    paint::{Pen, c4},
+};
 use blitznir_core::beam::{h2, noise1, smooth, walk};
 use freya::engine::prelude::Paint;
 use std::f32::consts::TAU;

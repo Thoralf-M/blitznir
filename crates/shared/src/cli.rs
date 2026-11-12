@@ -1,19 +1,26 @@
 //! The command line. Output goes to stdout, log lines to stderr.
 
-use crate::audio::{self, Source};
-use crate::session::{Dictator, Note};
-use crate::{platform, stt};
-use blitznir_core::config::{Config, Paths, SttModel};
-use blitznir_core::dictation::Phase;
-use blitznir_core::platform::Recognizer;
-use blitznir_core::segmenter::{SAMPLE_RATE, SegConfig, Segmenter};
-use blitznir_core::store::Store;
-use blitznir_core::vocab::Vocab;
-use blitznir_core::{Error, Result};
-use std::io::Write;
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, mpsc};
-use std::time::{Duration, Instant};
+use crate::{
+    audio::{self, Source},
+    platform,
+    session::{Dictator, Note},
+    stt,
+};
+use blitznir_core::{
+    Error, Result,
+    config::{Config, Paths, SttModel},
+    dictation::Phase,
+    platform::Recognizer,
+    segmenter::{SAMPLE_RATE, SegConfig, Segmenter},
+    store::Store,
+    vocab::Vocab,
+};
+use std::{
+    io::Write,
+    path::{Path, PathBuf},
+    sync::{Arc, mpsc},
+    time::{Duration, Instant},
+};
 
 const USAGE: &str = "usage: blitznir            the tray app (hotkeys, dictation)
        blitznir --check    data dir, config, model, permissions, microphone

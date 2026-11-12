@@ -4,17 +4,19 @@
 //! prompt, folded to three lines; and the history row a chat is about, its
 //! Before and After on the chat's one selection.
 
-use super::answer::Body;
-use super::icons::{self, icon, icon_button};
-use super::section::choice;
-use super::select::Selectable;
-use super::style::{Look, button, head, pressable, use_palette};
-use super::tip::Tip;
-use crate::panel::Panel;
-use crate::panel::view::Ui;
-use blitznir_core::markdown::Block;
-use blitznir_core::markdown::select;
-use blitznir_core::store::{HistoryItem, HistoryKind};
+use super::{
+    answer::Body,
+    icons::{self, icon, icon_button},
+    section::choice,
+    select::Selectable,
+    style::{Look, button, head, pressable, use_palette},
+    tip::Tip,
+};
+use crate::panel::{Panel, view::Ui};
+use blitznir_core::{
+    markdown::{Block, select},
+    store::{HistoryItem, HistoryKind},
+};
 use freya::prelude::*;
 use std::sync::Arc;
 

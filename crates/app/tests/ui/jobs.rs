@@ -2,18 +2,19 @@
 //! not touch what came after it.
 
 use super::kit::*;
-use blitznir_app::panel::Mode;
-use blitznir_app::panel::view::Busy;
-use blitznir_app::ui;
-use blitznir_core::lock;
-use blitznir_core::platform::Platform;
-use blitznir_core::platform::fake::FakePlatform;
-use blitznir_core::store::Unanswered;
-use blitznir_core::tasks::Kind;
+use blitznir_app::{
+    panel::{Mode, view::Busy},
+    ui,
+};
+use blitznir_core::{
+    lock,
+    platform::{Platform, fake::FakePlatform},
+    store::Unanswered,
+    tasks::Kind,
+};
 use freya::prelude::{LaunchProxy, Size2D};
 use freya_testing::prelude::*;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 /// A job that starts while the last one still pastes (a dictation's rewrite,
 /// say) keeps its busy: the finished one's end clears only its own.

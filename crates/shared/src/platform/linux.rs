@@ -12,14 +12,18 @@ mod scheme;
 mod seat;
 mod typing;
 
-use blitznir_core::config::{Config, Linux as LinuxConfig, Paths};
-use blitznir_core::platform::{Bounds, CopyToken, Focus, KeyEvent, Platform, Rect};
-use blitznir_core::{Error, Result, lock};
-use std::path::Path;
-use std::sync::Mutex;
-use std::sync::mpsc::Sender;
-use std::thread;
-use std::time::{Duration, Instant};
+use blitznir_core::{
+    Error, Result,
+    config::{Config, Linux as LinuxConfig, Paths},
+    lock,
+    platform::{Bounds, CopyToken, Focus, KeyEvent, Platform, Rect},
+};
+use std::{
+    path::Path,
+    sync::{Mutex, mpsc::Sender},
+    thread,
+    time::{Duration, Instant},
+};
 use typing::{Keyboard, Run};
 
 const INPUT_GROUP: &str = "input group";

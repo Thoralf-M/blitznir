@@ -8,16 +8,16 @@
 //! typed as said and the box by it offers Rewrite (macOS), which runs the
 //! same rewrite over what was typed.
 
-use super::job::Doing;
-use super::view::Busy;
-use super::{BUSY, Panel, spawn};
+use super::{BUSY, Panel, job::Doing, spawn, view::Busy};
 use crate::ui::revert::BoxKind;
-use blitznir_core::llm::CancellationToken;
-use blitznir_core::lock;
-use blitznir_core::platform::{Bounds, Focus};
-use blitznir_core::store::Chat;
-use blitznir_core::tasks::{self, Kind};
-use blitznir_core::textproc;
+use blitznir_core::{
+    llm::CancellationToken,
+    lock,
+    platform::{Bounds, Focus},
+    store::Chat,
+    tasks::{self, Kind},
+    textproc,
+};
 use std::sync::Arc;
 
 impl Panel {

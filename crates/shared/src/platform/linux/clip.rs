@@ -6,13 +6,16 @@
 //! the background only X11 through XWayland is left.
 
 use blitznir_core::lock;
-use gtk::glib::{self, ToVariant};
-use gtk::prelude::{Cast, GtkWindowExt};
-use gtk::{gdk, gdk_pixbuf, gio};
-use std::sync::Mutex;
-use std::sync::mpsc;
-use std::thread;
-use std::time::{Duration, Instant};
+use gtk::{
+    gdk, gdk_pixbuf, gio,
+    glib::{self, ToVariant},
+    prelude::{Cast, GtkWindowExt},
+};
+use std::{
+    sync::{Mutex, mpsc},
+    thread,
+    time::{Duration, Instant},
+};
 
 /// How long a caller waits for the main thread; a nested clipboard read on a
 /// busy loop may take this long, a stuck one is given up.

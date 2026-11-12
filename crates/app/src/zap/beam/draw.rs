@@ -5,9 +5,10 @@
 //! It never draws over the selected text: that rect is clipped out, and the
 //! flare's light lies only above the line's top edge.
 
-use super::motes;
-use super::paint::{Buffers, Pen, Stops, c4, radial};
-use super::{Beam, Pt};
+use super::{
+    Beam, Pt, motes,
+    paint::{Buffers, Pen, Stops, c4, radial},
+};
 use blitznir_core::beam::{Phase, h2, noise1};
 use freya::engine::prelude::{
     BlendMode, BlurStyle, Canvas, ClipOp, Colors, Gradient, Interpolation, MaskFilter, Paint,

@@ -30,8 +30,7 @@ fn record_button(t: &mut TestingRunner) -> Area {
 /// them): a letter is refused, left Ctrl goes in by its name; the field
 /// types nothing meanwhile.
 pub fn record_takes_the_pressed_keys_name(proxy: &LaunchProxy) {
-    use blitznir_core::keys::Key as K;
-    use blitznir_core::platform::KeyEvent;
+    use blitznir_core::{keys::Key as K, platform::KeyEvent};
     let panel = panel(proxy, "record", &[]);
     panel.show_settings(true);
     let p = panel.clone();
@@ -216,8 +215,7 @@ pub fn the_sidebar_keeps_the_chats_and_folds_lists(proxy: &LaunchProxy) {
 /// Seeded: 10 dictations and 10 rewrites, a 300 pt window: the Chats heading
 /// stays on screen with the chats shown and with them folded.
 pub fn the_chats_heading_stays_in_a_short_full_window(proxy: &LaunchProxy) {
-    use blitznir_core::platform::fake::FakePlatform;
-    use blitznir_core::store::Made;
+    use blitznir_core::{platform::fake::FakePlatform, store::Made};
     let chat = long_chat();
     let seed = |s: &blitznir_core::store::Store| {
         for i in 0..10 {

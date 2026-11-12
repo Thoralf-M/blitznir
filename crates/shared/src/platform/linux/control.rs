@@ -12,14 +12,18 @@
 
 use super::pipe;
 use blitznir_core::lock;
-use std::fs::File;
-use std::io::Write;
-use std::os::fd::{AsFd, OwnedFd};
-use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::{Duration, Instant};
-use wayland_client::protocol::{wl_registry, wl_seat};
-use wayland_client::{Connection, Dispatch, EventQueue, Proxy, QueueHandle, event_created_child};
+use std::{
+    fs::File,
+    io::Write,
+    os::fd::{AsFd, OwnedFd},
+    sync::{Arc, Mutex},
+    thread,
+    time::{Duration, Instant},
+};
+use wayland_client::{
+    Connection, Dispatch, EventQueue, Proxy, QueueHandle, event_created_child,
+    protocol::{wl_registry, wl_seat},
+};
 use wayland_protocols_wlr::data_control::v1::client::{
     zwlr_data_control_device_v1 as device, zwlr_data_control_manager_v1 as manager,
     zwlr_data_control_offer_v1 as offer, zwlr_data_control_source_v1 as source,
@@ -305,8 +309,10 @@ impl Dispatch<wl_seat::WlSeat, ()> for Owner {
 
 #[cfg(test)]
 mod tests {
-    use std::process::{Command, Stdio};
-    use std::time::Duration;
+    use std::{
+        process::{Command, Stdio},
+        time::Duration,
+    };
 
     /// Only where a compositor offers data control and wl-paste is there
     /// (a headless sway in the container will do); `BLITZNIR_WAYLAND_TEST`

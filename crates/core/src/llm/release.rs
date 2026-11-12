@@ -65,8 +65,10 @@ pub fn newer(current: &str, version: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::newer;
-    use crate::llm::Client;
-    use crate::llm::mock::{Reply, mock};
+    use crate::llm::{
+        Client,
+        mock::{Reply, mock},
+    };
 
     #[tokio::test]
     async fn no_release_yet_says_so_and_a_release_is_read() {

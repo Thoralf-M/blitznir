@@ -5,13 +5,19 @@
 //! leave a hole where one hands over to the next.
 
 use blitznir_core::{Error, Result};
-use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{FromSample, SampleFormat, SizedSample, Stream, StreamConfig};
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc;
-use std::thread;
-use std::time::Duration;
+use cpal::{
+    FromSample, SampleFormat, SizedSample, Stream, StreamConfig,
+    traits::{DeviceTrait, HostTrait, StreamTrait},
+};
+use std::{
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+        mpsc,
+    },
+    thread,
+    time::Duration,
+};
 
 /// The next sample, -1..1; None: it has played out, the stream closes.
 pub type Fill = Box<dyn FnMut() -> Option<f32> + Send>;

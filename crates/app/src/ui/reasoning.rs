@@ -3,15 +3,19 @@
 //! fold is this view's own, per message, never stored; the band keeps the
 //! streaming answer's, so it stays as it was when the answer is in.
 
-use super::follow::{Follow, use_follow};
-use super::icons::{self, icon};
-use super::select::Selectable;
-use super::style::{Look, Palette, button, head, pressable, use_palette};
+use super::{
+    follow::{Follow, use_follow},
+    icons::{self, icon},
+    select::Selectable,
+    style::{Look, Palette, button, head, pressable, use_palette},
+};
 use crate::panel::view::Ui;
 use blitznir_core::store::Unthought;
 use freya::prelude::*;
-use std::cell::{Cell, RefCell};
-use std::rc::Rc;
+use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+};
 
 /// An opened trace's box at most, in points; a longer one scrolls in it.
 const BOX_MAX: f32 = 240.0;

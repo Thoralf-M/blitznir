@@ -2,8 +2,7 @@
 //! as it streams in.
 
 use super::kit::*;
-use blitznir_app::panel::Mode;
-use blitznir_app::ui;
+use blitznir_app::{panel::Mode, ui};
 use blitznir_core::store::{Chat, Unthought};
 use freya::prelude::{LaunchProxy, Size2D};
 use freya_testing::prelude::*;

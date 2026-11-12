@@ -5,11 +5,12 @@
 //! Copy copies it; Close, a press beside it or Esc closes it. The geometry
 //! is core's picture.rs.
 
-use super::section::choice;
-use super::style::{Look, Palette, use_palette};
-use super::thumbs::{Shown, dims};
-use crate::panel::Panel;
-use crate::panel::view::Shot;
+use super::{
+    section::choice,
+    style::{Look, Palette, use_palette},
+    thumbs::{Shown, dims},
+};
+use crate::panel::{Panel, view::Shot};
 use blitznir_core::picture::{MAX_ZOOM, Picture};
 use freya::prelude::*;
 use std::sync::Arc;

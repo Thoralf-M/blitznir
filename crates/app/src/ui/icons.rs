@@ -1,8 +1,10 @@
 //! The icons: hand-drawn 24×24 strokes, drawn in the
 //! colour they are given, always with a tooltip.
 
-use super::style::{Look, Palette, button_if, pressable};
-use super::tip::Tip;
+use super::{
+    style::{Look, Palette, button_if, pressable},
+    tip::Tip,
+};
 use freya::prelude::*;
 
 macro_rules! svg {

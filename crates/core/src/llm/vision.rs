@@ -4,12 +4,13 @@
 //! Studio does, any server may), else `[llm] vision_models` on the id.
 
 use super::Client;
-use crate::config::{Config, Endpoint};
-use crate::tasks;
+use crate::{
+    config::{Config, Endpoint},
+    tasks,
+};
 use regex::Regex;
 use serde_json::Value;
-use std::collections::HashMap;
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
 /// Model id → the server says it takes images.
 pub type Types = HashMap<String, bool>;

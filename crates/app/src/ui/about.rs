@@ -1,11 +1,12 @@
 //! Settings' About page: what this build is, where its data lives, and whose
 //! work it stands on (the speech model's licence asks to be named).
 
-use super::form::card;
-use super::select::Selectable;
-use super::style::{Look, Palette, button_if, pressable};
-use crate::panel::Panel;
-use crate::panel::updates::Updates;
+use super::{
+    form::card,
+    select::Selectable,
+    style::{Look, Palette, button_if, pressable},
+};
+use crate::panel::{Panel, updates::Updates};
 use freya::prelude::*;
 use std::sync::Arc;
 

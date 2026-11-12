@@ -4,17 +4,21 @@
 //! it does not parse); Reset to defaults and Ask model only fill the editor.
 //! The sidebar's About shows ui/about.rs in their place, with only Back.
 
-use super::keys::field_keys;
-use super::select::Selectable;
-use super::style::{
-    Look, Palette, button, button_if, grown_height, pressable, syntax, use_palette,
+use super::{
+    keys::field_keys,
+    select::Selectable,
+    style::{Look, Palette, button, button_if, grown_height, pressable, syntax, use_palette},
+    tip::Tip,
 };
-use super::tip::Tip;
-use crate::panel::Panel;
-use crate::panel::view::{MOD, RET, Ui};
-use freya::code_editor::{CodeEditor, CodeEditorData, EditorLanguage, Rope};
-use freya::prelude::*;
-use freya::text_edit::TextEditor;
+use crate::panel::{
+    Panel,
+    view::{MOD, RET, Ui},
+};
+use freya::{
+    code_editor::{CodeEditor, CodeEditorData, EditorLanguage, Rope},
+    prelude::*,
+    text_edit::TextEditor,
+};
 use std::sync::Arc;
 
 const FONT: &str = "monospace";

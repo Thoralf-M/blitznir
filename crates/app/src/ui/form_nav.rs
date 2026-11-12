@@ -3,15 +3,18 @@
 //! the text, ui/find.rs) and, with the form, lists its pages: a press shows
 //! that one. About is a page of its own, below a rule. ⌘F is the search.
 
-use super::keys::field_keys;
-use super::style::{Look, Palette, button, pressable, use_palette};
+use super::{
+    keys::field_keys,
+    style::{Look, Palette, button, pressable, use_palette},
+};
 use crate::panel::view::Ui;
 use blitznir_core::config::form::{SECTIONS, TABLES, cards};
-use freya::code_editor::CodeEditorData;
-use freya::prelude::*;
-use std::cell::{Cell, RefCell};
-use std::rc::Rc;
-use std::time::{Duration, Instant};
+use freya::{code_editor::CodeEditorData, prelude::*};
+use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+    time::{Duration, Instant},
+};
 
 /// The form's pages in order: the two tables, then SECTIONS.
 fn titles() -> Vec<&'static str> {

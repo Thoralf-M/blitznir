@@ -2,11 +2,12 @@
 //! along a line, the frames saved with `UI_SHOTS=<dir>`, and their cost.
 #![allow(clippy::print_stdout)] // a test's report is its output
 
-use super::Scene;
-use super::window::{Tip, draw};
+use super::{
+    Scene,
+    window::{Tip, draw},
+};
 use crate::zap::wave::{Cache, Ink};
-use blitznir_core::platform::Rect;
-use blitznir_core::wave::spot;
+use blitznir_core::{platform::Rect, wave::spot};
 use freya::engine::prelude::{
     Color, EncodedImageFormat, Paint, SkRect, Surface, raster_n32_premul,
 };

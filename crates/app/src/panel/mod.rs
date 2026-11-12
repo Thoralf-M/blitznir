@@ -23,21 +23,26 @@ pub mod view;
 pub use history::{List, list_name, noun};
 mod window;
 
-use crate::tray::Tray;
-use crate::zap::Zap;
-use blitznir_core::config::{Config, Endpoint, Paths};
-use blitznir_core::jobs::Undo;
-use blitznir_core::llm::{self, Client};
-use blitznir_core::platform::{Focus, Platform};
-use blitznir_core::store::{Chat, Store};
-use blitznir_core::{Result, lock};
-use freya::prelude::LaunchProxy;
-use freya::winit::window::WindowId;
-use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, Weak};
-use std::thread;
-use std::time::{Duration, Instant};
+use crate::{tray::Tray, zap::Zap};
+use blitznir_core::{
+    Result,
+    config::{Config, Endpoint, Paths},
+    jobs::Undo,
+    llm::{self, Client},
+    lock,
+    platform::{Focus, Platform},
+    store::{Chat, Store},
+};
+use freya::{prelude::LaunchProxy, winit::window::WindowId};
+use std::{
+    collections::HashMap,
+    sync::{
+        Arc, Mutex, Weak,
+        atomic::{AtomicBool, AtomicU64, Ordering},
+    },
+    thread,
+    time::{Duration, Instant},
+};
 use view::{RET, Shot, Ui, View};
 
 /// The previous app gets this long to act on our ⌘C before we take focus.

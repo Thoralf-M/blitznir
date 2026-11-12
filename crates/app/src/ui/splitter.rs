@@ -4,8 +4,7 @@
 //! sidebar follows. The width is kept in state.json when the drag ends,
 //! not on every move.
 
-use super::Peek;
-use super::style::use_palette;
+use super::{Peek, style::use_palette};
 use crate::panel::Panel;
 use blitznir_core::store::State as Saved;
 use freya::prelude::*;

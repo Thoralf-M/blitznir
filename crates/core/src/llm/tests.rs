@@ -1,7 +1,11 @@
-use super::mock::{Mock, Reply, dead_endpoint, mock};
-use super::*;
-use crate::store::{State, Unthought};
-use crate::tasks::tests::{block, prompts_md, vectors};
+use super::{
+    mock::{Mock, Reply, dead_endpoint, mock},
+    *,
+};
+use crate::{
+    store::{State, Unthought},
+    tasks::tests::{block, prompts_md, vectors},
+};
 use serde_json::json;
 
 mod fallback;

@@ -2,14 +2,17 @@
 //! shown large as attached, not as downscaled for the model.
 
 use super::kit::*;
-use blitznir_app::panel::Mode;
-use blitznir_app::ui;
-use blitznir_core::config::Paths;
-use blitznir_core::lock;
-use blitznir_core::platform::fake::FakePlatform;
-use blitznir_core::store::{Chat, Store};
-use freya::elements::image::Image;
-use freya::prelude::{Area, LaunchProxy, Size2D};
+use blitznir_app::{panel::Mode, ui};
+use blitznir_core::{
+    config::Paths,
+    lock,
+    platform::fake::FakePlatform,
+    store::{Chat, Store},
+};
+use freya::{
+    elements::image::Image,
+    prelude::{Area, LaunchProxy, Size2D},
+};
 use freya_testing::prelude::*;
 use std::sync::Arc;
 

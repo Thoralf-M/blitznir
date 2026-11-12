@@ -4,19 +4,22 @@
 //! Listen-only needs Input Monitoring alone and can never freeze the keyboard.
 
 use super::MARK;
-use blitznir_core::Result;
-use blitznir_core::platform::{Key, KeyEvent};
+use blitznir_core::{
+    Result,
+    platform::{Key, KeyEvent},
+};
 use objc2_core_foundation::{CFMachPort, CFRetained, CFRunLoop, CGPoint, kCFRunLoopCommonModes};
 use objc2_core_graphics::{
     CGEvent, CGEventField, CGEventFlags, CGEventTapLocation, CGEventTapOptions,
     CGEventTapPlacement, CGEventTapProxy, CGEventType, CGPreflightListenEventAccess,
 };
-use std::ffi::c_void;
-use std::ptr::NonNull;
-use std::sync::mpsc::Sender;
-use std::sync::{Mutex, MutexGuard};
-use std::thread;
-use std::time::Duration;
+use std::{
+    ffi::c_void,
+    ptr::NonNull,
+    sync::{Mutex, MutexGuard, mpsc::Sender},
+    thread,
+    time::Duration,
+};
 
 /// Keycode, key, and its device-specific flag bit (NX_DEVICE*KEYMASK). The
 /// generic flags cannot tell left from right, so with them a held left ⌥

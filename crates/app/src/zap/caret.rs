@@ -13,17 +13,27 @@ pub mod window;
 #[cfg(test)]
 mod tests;
 
-use blitznir_core::dictation::Phase;
-use blitznir_core::lock;
-use blitznir_core::platform::{Platform, Rect};
-use blitznir_core::wave::{CARET_OUT_SECS, Spot, spot};
-use freya::prelude::LaunchProxy;
-use freya::winit::dpi::{LogicalPosition, LogicalSize};
-use freya::winit::window::WindowId;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, Weak};
-use std::thread;
-use std::time::{Duration, Instant};
+use blitznir_core::{
+    dictation::Phase,
+    lock,
+    platform::{Platform, Rect},
+    wave::{CARET_OUT_SECS, Spot, spot},
+};
+use freya::{
+    prelude::LaunchProxy,
+    winit::{
+        dpi::{LogicalPosition, LogicalSize},
+        window::WindowId,
+    },
+};
+use std::{
+    sync::{
+        Arc, Mutex, Weak,
+        atomic::{AtomicBool, AtomicU64, Ordering},
+    },
+    thread,
+    time::{Duration, Instant},
+};
 
 /// How often the caret is asked for: a word lands every 400 ms or so, and
 /// the spring glides between the answers.

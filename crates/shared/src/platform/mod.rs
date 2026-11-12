@@ -1,11 +1,10 @@
 //! The OS behind core's `Platform` seam. The only place for OS code and unsafe.
 
-use blitznir_core::Result;
-use blitznir_core::platform::{Platform, shell_quote};
-use std::path::Path;
-use std::process::Command;
-use std::sync::Arc;
-use std::thread;
+use blitznir_core::{
+    Result,
+    platform::{Platform, shell_quote},
+};
+use std::{path::Path, process::Command, sync::Arc, thread};
 
 #[cfg(target_os = "linux")]
 mod linux;

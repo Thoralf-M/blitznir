@@ -3,15 +3,22 @@
 //! `blitznir dictate` both drive this, so the CLI tests the hotkey path.
 
 use crate::audio::{self, Recorder, Source};
-use blitznir_core::config::Config;
-use blitznir_core::dictation::{self, Opts, Phase, Step};
-use blitznir_core::lock;
-use blitznir_core::platform::{Platform, Recognizer};
-use blitznir_core::store::Store;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, mpsc};
-use std::thread;
-use std::time::Duration;
+use blitznir_core::{
+    config::Config,
+    dictation::{self, Opts, Phase, Step},
+    lock,
+    platform::{Platform, Recognizer},
+    store::Store,
+};
+use std::{
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, Ordering},
+        mpsc,
+    },
+    thread,
+    time::Duration,
+};
 
 /// How long a finished session waits for the audio thread to let go of the
 /// microphone. The phase is Idle by then; this only decides whether the
@@ -197,8 +204,7 @@ impl Dictator {
 mod tests {
     use super::*;
     use crate::audio::Stats;
-    use blitznir_core::config::Paths;
-    use blitznir_core::platform::fake::FakePlatform;
+    use blitznir_core::{config::Paths, platform::fake::FakePlatform};
     use std::time::Instant;
 
     #[test]

@@ -2,10 +2,8 @@
 //! [`Platform`] per OS and [`Recognizer`] with Parakeet; [`fake`] implements
 //! both for tests.
 
-use crate::Result;
-use crate::config::Config;
-use std::path::Path;
-use std::sync::mpsc::Sender;
+use crate::{Result, config::Config};
+use std::{path::Path, sync::mpsc::Sender};
 
 pub use crate::keys::{Key, KeyEvent};
 

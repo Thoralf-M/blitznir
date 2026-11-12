@@ -2,10 +2,11 @@
 
 use super::kit::*;
 use blitznir_app::ui;
-use blitznir_core::lock;
-use blitznir_core::platform::fake::FakePlatform;
-use blitznir_core::platform::{KeyEvent, Platform};
-use blitznir_core::tasks::Kind;
+use blitznir_core::{
+    lock,
+    platform::{KeyEvent, Platform, fake::FakePlatform},
+    tasks::Kind,
+};
 use freya::prelude::{LaunchProxy, Size2D};
 use freya_testing::prelude::*;
 use std::sync::Arc;

@@ -5,18 +5,21 @@
 //! little) at 30 frames a second while the caret moves, 10 when it rests,
 //! none once it has faded out.
 
-use super::super::wave::{self, Cache, Frame, Ink, Stream};
-use super::{Caret, Scene};
-use blitznir_core::beam::smooth;
-use blitznir_core::platform::Rect;
-use blitznir_core::wave::{
-    CARET_OUT_SECS, Follow, MOVING_FRAME, PAST_CARET, Spot, frame, strength,
+use super::{
+    super::wave::{self, Cache, Frame, Ink, Stream},
+    Caret, Scene,
 };
-use freya::engine::prelude::Canvas as SkCanvas;
-use freya::prelude::*;
-use freya::winit::window::{WindowAttributes, WindowLevel};
-use std::sync::Arc;
-use std::time::Instant;
+use blitznir_core::{
+    beam::smooth,
+    platform::Rect,
+    wave::{CARET_OUT_SECS, Follow, MOVING_FRAME, PAST_CARET, Spot, frame, strength},
+};
+use freya::{
+    engine::prelude::Canvas as SkCanvas,
+    prelude::*,
+    winit::window::{WindowAttributes, WindowLevel},
+};
+use std::{sync::Arc, time::Instant};
 
 /// The tip's core light, a bit brighter than the base wave's, tuned by eye.
 const CORE: f32 = 1.35;
@@ -51,8 +54,7 @@ fn place(attrs: WindowAttributes, at: Rect) -> WindowAttributes {
         .with_active(false);
     #[cfg(target_os = "macos")]
     {
-        use freya::winit::dpi::LogicalPosition;
-        use freya::winit::platform::macos::WindowAttributesExtMacOS;
+        use freya::winit::{dpi::LogicalPosition, platform::macos::WindowAttributesExtMacOS};
         attrs
             .with_position(LogicalPosition::new(at.x, at.y))
             .with_has_shadow(false)

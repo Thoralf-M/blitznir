@@ -2,15 +2,21 @@
 //! peak, faster once the answer streams in; a last, bigger strike when it
 //! is in, and the paste after it.
 
-use super::bolt::{self, Rng};
-use super::{BLOW, FINAL, GAP_WAITING, GAP_WRITING, Msg, SEEN, SHORT, Sound, Strike, TICK, Zap};
+use super::{
+    BLOW, FINAL, GAP_WAITING, GAP_WRITING, Msg, SEEN, SHORT, Sound, Strike, TICK, Zap,
+    bolt::{self, Rng},
+};
 use crate::tray::GLOW_PEAK;
 use blitznir_core::sky::Sky;
-use std::sync::Arc;
-use std::sync::atomic::Ordering;
-use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
-use std::thread;
-use std::time::{Duration, Instant};
+use std::{
+    sync::{
+        Arc,
+        atomic::Ordering,
+        mpsc::{Receiver, RecvTimeoutError, Sender},
+    },
+    thread,
+    time::{Duration, Instant},
+};
 use thunder_synth::Thunder;
 
 /// One effect's thread. It owns the overlay and the hammer until the job

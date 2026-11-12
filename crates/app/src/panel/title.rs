@@ -2,9 +2,11 @@
 //! from what was said. Either way it is the chat's name in the sidebar.
 
 use super::{Panel, spawn};
-use blitznir_core::llm::CancellationToken;
-use blitznir_core::lock;
-use blitznir_core::tasks::{self, Turn};
+use blitznir_core::{
+    llm::CancellationToken,
+    lock,
+    tasks::{self, Turn},
+};
 use std::sync::Arc;
 
 impl Panel {

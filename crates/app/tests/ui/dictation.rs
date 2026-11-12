@@ -3,8 +3,10 @@
 //! the text's end; it fades out when the recording ends.
 
 use super::kit::*;
-use blitznir_app::panel::{Mode, Panel};
-use blitznir_app::ui;
+use blitznir_app::{
+    panel::{Mode, Panel},
+    ui,
+};
 use freya::prelude::{Area, LaunchProxy, Platform, PreferredTheme, Size2D, WritableUtils};
 use freya_testing::prelude::*;
 use std::sync::Arc;

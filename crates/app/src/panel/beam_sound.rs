@@ -6,10 +6,14 @@
 use super::sound::{gain, seed};
 use crate::zap::{Hum, HumSound};
 use blitznir::speaker::Speaker;
-use blitznir_core::beam_sound::{RATE, Synth};
-use blitznir_core::lock;
-use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::{Arc, Mutex};
+use blitznir_core::{
+    beam_sound::{RATE, Synth},
+    lock,
+};
+use std::sync::{
+    Arc, Mutex,
+    mpsc::{self, Receiver, Sender},
+};
 
 /// A stop fades out over this: no click where it ends.
 const STOP_SECS: f32 = 0.02;

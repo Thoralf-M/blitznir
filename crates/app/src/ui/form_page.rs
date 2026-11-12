@@ -4,12 +4,13 @@
 //! under them for a text with lines; the rarely changed ones folded under
 //! Advanced. A search shows what matches from every page instead.
 
-use super::form::{Edit, edit};
-use super::icons::{self, icon};
-use super::select::Selectable;
-use super::style::{Look, Palette, button, pressable};
-use crate::panel::form::Target;
-use crate::panel::view::Ui;
+use super::{
+    form::{Edit, edit},
+    icons::{self, icon},
+    select::Selectable,
+    style::{Look, Palette, button, pressable},
+};
+use crate::panel::{form::Target, view::Ui};
 use blitznir_core::config::form::{self, Field, Kind, Section};
 use freya::prelude::*;
 

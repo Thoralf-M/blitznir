@@ -8,9 +8,7 @@
 //! drag past its top or bottom edge scrolls the text that way.
 
 use freya::prelude::*;
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::time::Duration;
+use std::{cell::RefCell, rc::Rc, time::Duration};
 
 /// How far above the bottom still counts as at the bottom, in pixels.
 const SLACK: f32 = 40.0;

@@ -2,10 +2,12 @@
 //! Linux destroys the window on every hide (Wayland can neither hide nor
 //! focus one), and the one made anew must show the same.
 
-use blitznir_core::config::Config;
-use blitznir_core::jobs::Slot;
-use blitznir_core::platform::{Bounds, Focus, Rect};
-use blitznir_core::store::{Chat, HistoryItem, State, Unanswered, Unthought};
+use blitznir_core::{
+    config::Config,
+    jobs::Slot,
+    platform::{Bounds, Focus, Rect},
+    store::{Chat, HistoryItem, State, Unanswered, Unthought},
+};
 use std::time::{Duration, Instant};
 
 mod shot;

@@ -10,8 +10,7 @@
 use super::{KEY_DELETE, front, post_marked, wait_released};
 use blitznir_core::platform::Focus;
 use objc2_core_graphics::{CGEvent, CGEventFlags};
-use std::thread;
-use std::time::Duration;
+use std::{thread, time::Duration};
 
 /// Let the app take the keys before the paste.
 const SETTLE: Duration = Duration::from_millis(20);

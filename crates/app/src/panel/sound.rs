@@ -8,13 +8,16 @@
 
 use super::spawn;
 use crate::zap::Sound;
-use blitznir_core::lock;
-use blitznir_core::platform::Platform;
-use std::process::Child;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use blitznir_core::{lock, platform::Platform};
+use std::{
+    process::Child,
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, AtomicU64, Ordering},
+    },
+    thread,
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+};
 use thunder_synth::{self as thunder, Thunder};
 
 /// A far roll starts when the last one has this long left: they overlap,

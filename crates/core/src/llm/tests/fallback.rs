@@ -1,8 +1,7 @@
 //! The think-off fallback: a chat that kept thinking past the ceiling.
 
 use super::*;
-use crate::llm::looping::tests::fresh;
-use crate::store::Unthought;
+use crate::{llm::looping::tests::fresh, store::Unthought};
 
 #[tokio::test]
 async fn thinking_past_the_ceiling_is_answered_without_thinking() {

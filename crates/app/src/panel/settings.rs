@@ -1,14 +1,19 @@
 //! The model picker, the sidebar's fold and the Settings editor: config.toml
 //! as text, saved only if it parses and validates.
 
-use super::job::Doing;
-use super::view::{Busy, Editor, MOD, ModelRow};
-use super::{Panel, spawn};
-use blitznir_core::config::{Config, DEFAULT_TOML, form};
-use blitznir_core::llm::{CancellationToken, Listing, vision};
-use blitznir_core::lock;
-use blitznir_core::store::State;
-use blitznir_core::tasks::{self, Kind};
+use super::{
+    Panel,
+    job::Doing,
+    spawn,
+    view::{Busy, Editor, MOD, ModelRow},
+};
+use blitznir_core::{
+    config::{Config, DEFAULT_TOML, form},
+    llm::{CancellationToken, Listing, vision},
+    lock,
+    store::State,
+    tasks::{self, Kind},
+};
 use std::sync::Arc;
 
 /// The picker's rows. A dead endpoint is one row that says why; the picked

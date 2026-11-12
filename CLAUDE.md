@@ -35,6 +35,7 @@ with synthetic mouse or keyboard events: someone is using that machine.
 - .rs file ≤ 400 lines; function ≤ 80 lines (clippy too_many_lines); README ≤ 150 lines.
 - No unwrap() outside tests (expect("why") allowed).
 - No println!/dbg!; use log::.
+- Format with nightly: `cargo +nightly fmt --all -- --config imports_granularity=Crate`.
 
 ## Never add
 

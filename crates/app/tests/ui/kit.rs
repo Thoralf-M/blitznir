@@ -1,19 +1,24 @@
 //! What the UI tests share: a panel over the Fake platform in a temporary
 //! data dir, made-up chats, local endpoints, and frames to look at.
 
-use blitznir_app::panel::{Hooks, Panel, Parts};
-use blitznir_app::tray::Tray;
-use blitznir_core::config::{Config, Endpoint, Paths};
-use blitznir_core::lock;
-use blitznir_core::platform::Platform;
-use blitznir_core::platform::fake::FakePlatform;
-use blitznir_core::store::{Chat, Message, State, Store};
+use blitznir_app::{
+    panel::{Hooks, Panel, Parts},
+    tray::Tray,
+};
+use blitznir_core::{
+    config::{Config, Endpoint, Paths},
+    lock,
+    platform::{Platform, fake::FakePlatform},
+    store::{Chat, Message, State, Store},
+};
 use freya::prelude::{Area, LaunchProxy};
 use freya_testing::prelude::*;
-use std::io::{BufRead, BufReader, Read, Write};
-use std::net::{TcpListener, TcpStream};
-use std::sync::{Arc, Mutex, mpsc};
-use std::time::{Duration, Instant};
+use std::{
+    io::{BufRead, BufReader, Read, Write},
+    net::{TcpListener, TcpStream},
+    sync::{Arc, Mutex, mpsc},
+    time::{Duration, Instant},
+};
 
 /// The panel's own size, in points.
 pub const WINDOW: (f32, f32) = (760.0, 540.0);

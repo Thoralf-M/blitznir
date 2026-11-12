@@ -5,11 +5,14 @@
 //! Several layouts: the first. Which one is active is said only to the
 //! focused client, never us while we type into another app.
 
-use std::fs::File;
-use std::os::fd::OwnedFd;
-use std::os::unix::fs::FileExt;
-use wayland_client::protocol::{wl_keyboard, wl_registry, wl_seat};
-use wayland_client::{Connection, Dispatch, QueueHandle, WEnum};
+use std::{
+    fs::File,
+    os::{fd::OwnedFd, unix::fs::FileExt},
+};
+use wayland_client::{
+    Connection, Dispatch, QueueHandle, WEnum,
+    protocol::{wl_keyboard, wl_registry, wl_seat},
+};
 
 #[derive(Default)]
 struct Ask {

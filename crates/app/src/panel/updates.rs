@@ -1,8 +1,7 @@
 //! Settings' "Check for updates" (ui/about.rs): core's latest_release on a
 //! press of the button, never by itself; the answer goes into [`Ui`].
 
-use super::view::Ui;
-use super::{Panel, spawn};
+use super::{Panel, spawn, view::Ui};
 use blitznir_core::llm::release::newer;
 use std::sync::Arc;
 

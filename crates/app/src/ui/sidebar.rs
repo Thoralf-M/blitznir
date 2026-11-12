@@ -12,12 +12,16 @@
 //! was dragged (the splitter in ui/mod.rs), which lists are folded away and
 //! whether History is open.
 
-use super::icons::{self, icon, icon_button};
-use super::section::{Section, history_heading};
-use super::style::{Palette, press_keys, ring, selectable_line, use_palette};
-use super::tip::Tip;
-use crate::panel::view::{self, ChatRow, Ui, short_time};
-use crate::panel::{List, Panel, list_name};
+use super::{
+    icons::{self, icon, icon_button},
+    section::{Section, history_heading},
+    style::{Palette, press_keys, ring, selectable_line, use_palette},
+    tip::Tip,
+};
+use crate::panel::{
+    List, Panel, list_name,
+    view::{self, ChatRow, Ui, short_time},
+};
 use blitznir_core::store::{HistoryItem, HistoryKind};
 use freya::prelude::*;
 use room::{clear_of_bar, list};

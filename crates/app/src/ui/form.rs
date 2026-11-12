@@ -3,21 +3,23 @@
 //! input changes the editor's text (panel/form.rs), so the Text tab shows
 //! the same file; it saves itself (panel/form.rs).
 
-use super::form_keys::KeysInput;
-use super::form_nav::FormNav;
-use super::form_page::{group, header, row, section};
-use super::icons::{self, icon, icon_button};
-use super::keys::field_keys;
-use super::select::Selectable;
-use super::style::{Look, Palette, button, pressable, use_palette};
-use crate::panel::Panel;
-use crate::panel::form::Target;
-use crate::panel::view::Ui;
+use super::{
+    form_keys::KeysInput,
+    form_nav::FormNav,
+    form_page::{group, header, row, section},
+    icons::{self, icon, icon_button},
+    keys::field_keys,
+    select::Selectable,
+    style::{Look, Palette, button, pressable, use_palette},
+};
+use crate::panel::{Panel, form::Target, view::Ui};
 use blitznir_core::config::form::{self, Kind, Rows, SECTIONS, cards};
 use freya::prelude::*;
-use std::cell::{Cell, RefCell};
-use std::rc::Rc;
-use std::sync::Arc;
+use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+    sync::Arc,
+};
 
 /// A field's keys: its own, except Esc, Tab, ⌘S and ⌘, (the window's).
 fn keys(e: Event<KeyboardEventData>) -> bool {

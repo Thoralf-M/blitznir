@@ -1,12 +1,14 @@
 //! One streamed chat completion: the request, its SSE read to the end, and
 //! the retries of an answer that ran out of tokens.
 
-use super::looping::Watch;
-use super::sse::{self, Attempt, Ended, Line, parse_line};
-use super::{CancellationToken, Client, OnDelta, Unwrap, check, portable, unreachable};
-use crate::config::Endpoint;
-use crate::store::Unthought;
-use crate::{Error, Result};
+use super::{
+    CancellationToken, Client, OnDelta, Unwrap, check,
+    looping::Watch,
+    portable,
+    sse::{self, Attempt, Ended, Line, parse_line},
+    unreachable,
+};
+use crate::{Error, Result, config::Endpoint, store::Unthought};
 use futures_util::StreamExt;
 use serde_json::Value;
 

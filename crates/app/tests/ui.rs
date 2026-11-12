@@ -39,10 +39,11 @@ mod thinking;
 mod view;
 
 use blitznir_app::ui;
-use blitznir_core::platform::fake::FakePlatform;
-use blitznir_core::store::State;
-use freya::prelude::{LaunchProxy, NativeEvent, Size2D};
-use freya::winit::event_loop::EventLoop;
+use blitznir_core::{platform::fake::FakePlatform, store::State};
+use freya::{
+    prelude::{LaunchProxy, NativeEvent, Size2D},
+    winit::event_loop::EventLoop,
+};
 use freya_testing::prelude::*;
 use kit::*;
 use std::sync::Arc;

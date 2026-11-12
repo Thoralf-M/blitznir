@@ -9,14 +9,18 @@ mod paths;
 mod rewrite;
 mod validate;
 
-use crate::keys::{Action, Key};
-use crate::{Error, Result};
+use crate::{
+    Error, Result,
+    keys::{Action, Key},
+};
 pub use actions::{Button, Prompts};
 pub use linux::Linux;
 pub use paths::{DATA_DIR_NAME, Paths};
 use serde::Deserialize;
-use std::collections::{BTreeMap, HashMap};
-use std::path::Path;
+use std::{
+    collections::{BTreeMap, HashMap},
+    path::Path,
+};
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]

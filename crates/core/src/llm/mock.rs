@@ -3,12 +3,16 @@
 
 use crate::config::Endpoint;
 use serde_json::Value;
-use std::io::{BufRead, BufReader, Read, Write};
-use std::net::{TcpListener, TcpStream};
-use std::sync::mpsc::{Receiver, channel};
-use std::sync::{Arc, Mutex};
-use std::thread::JoinHandle;
-use std::time::Duration;
+use std::{
+    io::{BufRead, BufReader, Read, Write},
+    net::{TcpListener, TcpStream},
+    sync::{
+        Arc, Mutex,
+        mpsc::{Receiver, channel},
+    },
+    thread::JoinHandle,
+    time::Duration,
+};
 
 pub(super) enum Reply {
     /// 200 text/event-stream: these lines, then close.

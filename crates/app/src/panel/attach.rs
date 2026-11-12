@@ -1,15 +1,15 @@
 //! The images for the next message: screen capture and image paste; the
 //! Copy buttons (text and images) and an answer's links.
 
-use super::view::Shot;
-use super::{BUSY, Panel, spawn};
+use super::{BUSY, Panel, spawn, view::Shot};
 use blitznir_core::{lock, store};
 use freya::prelude::Bytes;
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::sync::atomic::Ordering;
-use std::thread;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::{
+    path::PathBuf,
+    sync::{Arc, atomic::Ordering},
+    thread,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 /// The panel's hide takes effect asynchronously; keep it out of the shot.
 const HIDE_SETTLE: Duration = Duration::from_millis(250);

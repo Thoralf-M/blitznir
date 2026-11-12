@@ -7,8 +7,10 @@ mod grants;
 mod tap;
 mod window;
 
-use blitznir_core::platform::{Bounds, CopyToken, Focus, KeyEvent, Platform, Rect};
-use blitznir_core::{Error, Result};
+use blitznir_core::{
+    Error, Result,
+    platform::{Bounds, CopyToken, Focus, KeyEvent, Platform, Rect},
+};
 use focus::{bring_front, editable, frontmost, nothing_selected, selection_bounds, yield_to};
 pub use grants::{PERMISSIONS, permission_help};
 use grants::{may_post, request_permissions};
@@ -21,11 +23,13 @@ use objc2_core_graphics::{
     CGEventType,
 };
 use objc2_foundation::{NSData, NSDictionary, NSString};
-use std::path::Path;
-use std::process::{Child, Command};
-use std::sync::mpsc::Sender;
-use std::thread;
-use std::time::{Duration, Instant};
+use std::{
+    path::Path,
+    process::{Child, Command},
+    sync::mpsc::Sender,
+    thread,
+    time::{Duration, Instant},
+};
 pub use window::{no_title_bar_zoom, set_frame, visible_frame};
 
 /// kCGEventSourceUserData on every event we post, so our own tap skips them.

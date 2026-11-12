@@ -2,12 +2,13 @@
 //! keeps what is typed, Esc takes it back), the wand asks the picked model
 //! for a title from what was said.
 
-use super::icons::{self, icon_button, icon_button_if};
-use super::keys::field_keys;
-use super::section::choice;
-use super::style::{Look, Palette, selectable_line, use_palette};
-use crate::panel::Panel;
-use crate::panel::view::Ui;
+use super::{
+    icons::{self, icon_button, icon_button_if},
+    keys::field_keys,
+    section::choice,
+    style::{Look, Palette, selectable_line, use_palette},
+};
+use crate::panel::{Panel, view::Ui};
 use freya::prelude::*;
 use std::sync::Arc;
 

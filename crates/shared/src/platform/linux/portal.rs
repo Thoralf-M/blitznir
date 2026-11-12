@@ -3,13 +3,17 @@
 //! to every other program, gnome-screenshot included (it falls back to an X11
 //! picker that never shows), so on GNOME Wayland this is the only way.
 
-use gtk::gio;
-use gtk::glib::{self, ToVariant};
-use gtk::prelude::FileExt;
-use std::path::Path;
-use std::sync::mpsc;
-use std::thread;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use gtk::{
+    gio,
+    glib::{self, ToVariant},
+    prelude::FileExt,
+};
+use std::{
+    path::Path,
+    sync::mpsc,
+    thread,
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+};
 
 const PORTAL: &str = "org.freedesktop.portal.Desktop";
 /// Long enough to pick a region at leisure; a forgotten one is given up.

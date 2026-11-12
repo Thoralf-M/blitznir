@@ -3,11 +3,17 @@
 //! thread of its own: read once, then followed through SettingChanged, so
 //! asking it costs the panel nothing.
 
-use gtk::gio;
-use gtk::glib::{self, ToVariant};
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU32, Ordering};
-use std::thread;
+use gtk::{
+    gio,
+    glib::{self, ToVariant},
+};
+use std::{
+    sync::{
+        Arc,
+        atomic::{AtomicU32, Ordering},
+    },
+    thread,
+};
 
 const PORTAL: &str = "org.freedesktop.portal.Desktop";
 const PATH: &str = "/org/freedesktop/portal/desktop";

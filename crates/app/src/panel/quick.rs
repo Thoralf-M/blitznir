@@ -2,10 +2,12 @@
 //! Undo last replace. Both answer in the tray.
 
 use super::{Mode, Panel, spawn};
-use blitznir_core::platform::{CopyToken, Focus};
-use blitznir_core::store::Chat;
-use blitznir_core::tasks::Kind;
-use blitznir_core::{jobs, lock};
+use blitznir_core::{
+    jobs, lock,
+    platform::{CopyToken, Focus},
+    store::Chat,
+    tasks::Kind,
+};
 use std::sync::Arc;
 
 impl Panel {

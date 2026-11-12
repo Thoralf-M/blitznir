@@ -2,10 +2,11 @@
 //! a chat's messages (with a Copy). A press on one shows it large over the
 //! window (viewer.rs).
 
-use super::icons::{self, icon_button};
-use super::style::Palette;
-use crate::panel::Panel;
-use crate::panel::view::Shot;
+use super::{
+    icons::{self, icon_button},
+    style::Palette,
+};
+use crate::panel::{Panel, view::Shot};
 use freya::prelude::*;
 use std::sync::Arc;
 

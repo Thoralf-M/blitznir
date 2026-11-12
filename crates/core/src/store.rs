@@ -2,13 +2,9 @@
 //! saved chats, their images, and the selected model. Every write is atomic
 //! (temp file + rename) and private (0600), so a crash never leaves half a file.
 
-use crate::config::Paths;
-use crate::{Result, now_stamp};
+use crate::{Result, config::Paths, now_stamp};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use std::io::Write;
-use std::os::unix::fs::OpenOptionsExt;
-use std::path::Path;
-use std::sync::Mutex;
+use std::{io::Write, os::unix::fs::OpenOptionsExt, path::Path, sync::Mutex};
 
 mod data_url;
 mod history;

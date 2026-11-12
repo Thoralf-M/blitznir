@@ -7,19 +7,24 @@
 //! canvas over the card, drawn after it). 30 frames a second while words
 //! come, 10 while it waits, none once it is gone.
 
-use super::answer::{Line, Selection};
-use super::style::use_palette;
-use crate::zap::wave::{self, Cache, Frame, Ink, Stream, Trail};
-use blitznir_core::beam::ease;
-use blitznir_core::wave::{
-    CHAT_OUT_SECS, FOLLOW_LAG, Follow, GROW_SECS, Heads, LEAD, MOVING_FRAME, OLD_FADE_SECS, frame,
-    strength,
+use super::{
+    answer::{Line, Selection},
+    style::use_palette,
 };
-use freya::engine::prelude::Canvas as SkCanvas;
-use freya::prelude::*;
-use std::cell::{Cell, RefCell};
-use std::rc::Rc;
-use std::time::{Duration, Instant};
+use crate::zap::wave::{self, Cache, Frame, Ink, Stream, Trail};
+use blitznir_core::{
+    beam::ease,
+    wave::{
+        CHAT_OUT_SECS, FOLLOW_LAG, Follow, GROW_SECS, Heads, LEAD, MOVING_FRAME, OLD_FADE_SECS,
+        frame, strength,
+    },
+};
+use freya::{engine::prelude::Canvas as SkCanvas, prelude::*};
+use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+    time::{Duration, Instant},
+};
 
 /// Fading in over this from the ask.
 const IN_SECS: f32 = 0.4;

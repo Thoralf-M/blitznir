@@ -7,13 +7,17 @@
 
 use super::{Panel, spawn};
 use crate::ui::revert::BoxKind;
-use blitznir_core::lock;
-use blitznir_core::platform::{Focus, KeyEvent};
-use blitznir_core::tasks::Kind;
-use std::hash::{DefaultHasher, Hash, Hasher};
-use std::sync::Arc;
-use std::thread;
-use std::time::Duration;
+use blitznir_core::{
+    lock,
+    platform::{Focus, KeyEvent},
+    tasks::Kind,
+};
+use std::{
+    hash::{DefaultHasher, Hash, Hasher},
+    sync::Arc,
+    thread,
+    time::Duration,
+};
 
 /// The listener hears the mouse-up before the app under it handles it: its
 /// selection is there this much later.

@@ -4,9 +4,7 @@
 use super::super::style::use_palette;
 use crate::panel::Panel;
 use freya::prelude::*;
-use std::cell::Cell;
-use std::rc::Rc;
-use std::sync::Arc;
+use std::{cell::Cell, rc::Rc, sync::Arc};
 
 /// The edge's height: its line in the middle, the rest to take a press.
 const EDGE: f32 = 9.0;

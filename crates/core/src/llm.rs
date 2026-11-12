@@ -10,14 +10,16 @@ mod sse;
 mod stream;
 pub mod vision;
 
-use crate::config::{Config, Endpoint};
-use crate::store::State;
-use crate::{Error, Result, tasks};
+use crate::{
+    Error, Result,
+    config::{Config, Endpoint},
+    store::State,
+    tasks,
+};
 use regex::Regex;
 use serde_json::Value;
 use sse::strip_wrappers;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 pub use stream::Answer;
 use tokio::sync::watch;
 

@@ -2,25 +2,36 @@
 //! the threads around one [`Dictator`] and one [`Panel`] (model, hotkeys,
 //! the permission watch), all from the shared half.
 
-use crate::panel::{Hooks, Mode, Panel, Parts};
-use crate::tray::Tray;
-use crate::zap::caret::Caret;
-use blitznir::audio::Source;
-use blitznir::session::{Dictator, Note};
-use blitznir::{logging, platform, stt};
-use blitznir_core::config::{Config, Paths};
-use blitznir_core::dictation::Phase;
-use blitznir_core::keys::{Action, Detector};
-use blitznir_core::platform::Platform;
-use blitznir_core::store::Store;
-use blitznir_core::tasks::Kind;
-use blitznir_core::{Error, Result};
-use freya::prelude::{LaunchConfig, LaunchProxy, NativeEvent, launch};
-use freya::winit::event_loop::EventLoop;
-use std::fs::{File, TryLockError};
-use std::sync::{Arc, OnceLock, Weak, mpsc};
-use std::thread;
-use std::time::{Duration, Instant};
+use crate::{
+    panel::{Hooks, Mode, Panel, Parts},
+    tray::Tray,
+    zap::caret::Caret,
+};
+use blitznir::{
+    audio::Source,
+    logging, platform,
+    session::{Dictator, Note},
+    stt,
+};
+use blitznir_core::{
+    Error, Result,
+    config::{Config, Paths},
+    dictation::Phase,
+    keys::{Action, Detector},
+    platform::Platform,
+    store::Store,
+    tasks::Kind,
+};
+use freya::{
+    prelude::{LaunchConfig, LaunchProxy, NativeEvent, launch},
+    winit::event_loop::EventLoop,
+};
+use std::{
+    fs::{File, TryLockError},
+    sync::{Arc, OnceLock, Weak, mpsc},
+    thread,
+    time::{Duration, Instant},
+};
 
 /// How often missing permissions are looked at again.
 const PERMISSION_POLL: Duration = Duration::from_secs(3);

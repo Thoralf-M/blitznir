@@ -3,8 +3,10 @@
 //! and the old one leaves; what was typed in the composer meanwhile stays
 //! there.
 
-use super::super::Panel;
-use super::super::view::{Shot, View};
+use super::super::{
+    Panel,
+    view::{Shot, View},
+};
 use blitznir_core::{lock, store, tasks};
 use std::sync::{Arc, MutexGuard};
 

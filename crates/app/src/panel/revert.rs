@@ -11,14 +11,19 @@
 
 use super::{Panel, spawn};
 use crate::ui::revert::{self, BoxKind};
-use blitznir_core::platform::{Focus, KeyEvent, Rect};
-use blitznir_core::store::Made;
-use blitznir_core::{lock, sky, textproc};
+use blitznir_core::{
+    lock,
+    platform::{Focus, KeyEvent, Rect},
+    sky,
+    store::Made,
+    textproc,
+};
 use freya::winit::window::WindowId;
-use std::sync::Arc;
-use std::sync::atomic::Ordering;
-use std::thread;
-use std::time::{Duration, Instant};
+use std::{
+    sync::{Arc, atomic::Ordering},
+    thread,
+    time::{Duration, Instant},
+};
 
 /// Long enough to read two lines and decide; any key ends it sooner.
 const OFFER: Duration = Duration::from_secs(12);

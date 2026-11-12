@@ -11,16 +11,26 @@
 //! when they rest, none once it has faded out.
 
 use super::style::use_palette;
-use crate::zap::caret::Scene;
-use crate::zap::caret::window::{Tip, draw};
-use crate::zap::wave::{Cache, Ink};
-use blitznir_core::platform::Rect;
-use blitznir_core::wave::{MOVING_FRAME, Spot, UNDER, frame};
-use freya::engine::prelude::{Canvas as SkCanvas, ClipOp, RectHeightStyle, RectWidthStyle, SkRect};
-use freya::prelude::*;
-use std::cell::{Cell, RefCell};
-use std::rc::Rc;
-use std::time::{Duration, Instant};
+use crate::zap::{
+    caret::{
+        Scene,
+        window::{Tip, draw},
+    },
+    wave::{Cache, Ink},
+};
+use blitznir_core::{
+    platform::Rect,
+    wave::{MOVING_FRAME, Spot, UNDER, frame},
+};
+use freya::{
+    engine::prelude::{Canvas as SkCanvas, ClipOp, RectHeightStyle, RectWidthStyle, SkRect},
+    prelude::*,
+};
+use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+    time::{Duration, Instant},
+};
 
 /// The input's own padding round its text (freya's input layout).
 pub const PAD: f32 = 8.0;

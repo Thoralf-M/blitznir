@@ -1,11 +1,19 @@
 use super::*;
-use crate::config::{Config, Paths};
-use crate::platform::Token;
-use crate::platform::fake::{FakePlatform, FakeRecognizer, Timeline};
-use crate::vocab::of as vocab;
-use std::sync::mpsc::{Receiver, sync_channel};
-use std::sync::{Arc, Mutex};
-use std::thread::JoinHandle;
+use crate::{
+    config::{Config, Paths},
+    platform::{
+        Token,
+        fake::{FakePlatform, FakeRecognizer, Timeline},
+    },
+    vocab::of as vocab,
+};
+use std::{
+    sync::{
+        Arc, Mutex,
+        mpsc::{Receiver, sync_channel},
+    },
+    thread::JoinHandle,
+};
 
 const BLOCK: usize = 800; // 50 ms, like the microphone
 

@@ -2,13 +2,13 @@
 //! and streams in, gone once the answer is in.
 
 use super::kit::*;
-use blitznir_app::panel::{Mode, Panel};
-use blitznir_app::ui;
+use blitznir_app::{
+    panel::{Mode, Panel},
+    ui,
+};
 use freya::prelude::{Area, LaunchProxy, Platform, PreferredTheme, Size2D, WritableUtils};
 use freya_testing::prelude::*;
-use std::collections::HashSet;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{collections::HashSet, sync::Arc, time::Duration};
 
 const ANSWER: &str = "One two three four five six seven eight nine ten";
 

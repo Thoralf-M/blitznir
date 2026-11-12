@@ -1,14 +1,18 @@
 //! Parakeet Ultra (moondream's post-train of Parakeet TDT 0.6B v3; ONNX, CPU) behind core's
 //! `Recognizer`, and its download.
 
-use blitznir_core::config::{Paths, SttModel};
-use blitznir_core::platform::{Recognizer, Token};
-use blitznir_core::segmenter::SAMPLE_RATE;
-use blitznir_core::{Error, Result};
+use blitznir_core::{
+    Error, Result,
+    config::{Paths, SttModel},
+    platform::{Recognizer, Token},
+    segmenter::SAMPLE_RATE,
+};
 use parakeet_rs::{ExecutionConfig, ParakeetTDT, TimestampMode, Transcriber};
-use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use std::{
+    io::{Read, Write},
+    path::{Path, PathBuf},
+    time::{Duration, Instant},
+};
 
 // istupakov's v3 graphs with Ultra's weights: same files, tensor names and IO as the v3 export.
 // Better German (FLEURS 4.13 → 3.61 % WER), English and noise than v3, by moondream's card.

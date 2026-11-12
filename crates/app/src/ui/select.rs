@@ -7,10 +7,8 @@
 //! still pointer.
 
 use super::follow::Follow;
-use freya::prelude::*;
-use freya::text_edit::*;
-use std::cell::Cell;
-use std::rc::Rc;
+use freya::{prelude::*, text_edit::*};
+use std::{cell::Cell, rc::Rc};
 
 #[derive(Clone, PartialEq)]
 pub struct Selectable {

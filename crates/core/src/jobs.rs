@@ -2,11 +2,14 @@
 //! headless: one at a time, a cancelled one never delivers, and where its
 //! result goes is fixed when it starts. The last paste-back can be undone.
 
-use crate::llm::CancellationToken;
-use crate::platform::{Focus, Platform};
-use crate::store::{Made, Store};
-use crate::tasks::{self, Kind};
-use crate::{Result, lock};
+use crate::{
+    Result,
+    llm::CancellationToken,
+    lock,
+    platform::{Focus, Platform},
+    store::{Made, Store},
+    tasks::{self, Kind},
+};
 use std::sync::{Arc, Mutex};
 
 /// What a job without an answer keeps of a rewrite, translation or chat
@@ -182,10 +185,11 @@ pub fn undo(platform: &dyn Platform, last: &LastReplace) -> Result<bool> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::Paths;
-    use crate::platform::fake::FakePlatform;
-    use std::sync::Arc;
-    use std::sync::atomic::{AtomicBool, Ordering};
+    use crate::{config::Paths, platform::fake::FakePlatform};
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    };
 
     fn store() -> (Store, Paths) {
         let dir = std::env::temp_dir().join(format!("blitznir-jobs-{}", uuid::Uuid::new_v4()));

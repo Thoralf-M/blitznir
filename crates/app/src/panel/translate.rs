@@ -3,14 +3,13 @@
 //! translation streaming in as the answer. The original stays in sight;
 //! Esc takes the turn back and the text returns to the field.
 
-use super::chat::message;
-use super::job::Doing;
-use super::view::Busy;
-use super::{BUSY, Panel, Said};
-use blitznir_core::llm::CancellationToken;
-use blitznir_core::lock;
-use blitznir_core::store::{self, Chat};
-use blitznir_core::tasks;
+use super::{BUSY, Panel, Said, chat::message, job::Doing, view::Busy};
+use blitznir_core::{
+    llm::CancellationToken,
+    lock,
+    store::{self, Chat},
+    tasks,
+};
 use std::sync::Arc;
 
 impl Panel {

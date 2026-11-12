@@ -4,8 +4,7 @@
 //! that runs out from where it lands along the selected line, both ways.
 
 use blitznir_core::platform::Rect;
-use std::collections::hash_map::RandomState;
-use std::hash::BuildHasher;
+use std::{collections::hash_map::RandomState, hash::BuildHasher};
 
 pub type Pt = (f32, f32);
 

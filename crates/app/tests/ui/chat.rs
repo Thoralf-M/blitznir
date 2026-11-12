@@ -1,8 +1,7 @@
 //! A chat's answers, as the model wrote them.
 
 use super::kit::*;
-use blitznir_app::panel::Mode;
-use blitznir_app::ui;
+use blitznir_app::{panel::Mode, ui};
 use blitznir_core::store::Chat;
 use freya::prelude::{Area, LaunchProxy, Size2D};
 use freya_testing::prelude::*;

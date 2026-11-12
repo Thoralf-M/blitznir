@@ -201,9 +201,11 @@ pub fn a_search_holds_the_history_open(proxy: &LaunchProxy) {
 /// pressed later, in another app, is no hotkey's new value.
 pub fn a_record_ends_with_settings(proxy: &LaunchProxy) {
     use blitznir_app::panel::form::Target;
-    use blitznir_core::config::form::{field, value};
-    use blitznir_core::keys::Key as K;
-    use blitznir_core::platform::KeyEvent;
+    use blitznir_core::{
+        config::form::{field, value},
+        keys::Key as K,
+        platform::KeyEvent,
+    };
     let panel = panel(proxy, "record-left", &[]);
     let chat = field("hotkeys", "chat").expect("in the form");
     let cmd = KeyEvent::Modifier {

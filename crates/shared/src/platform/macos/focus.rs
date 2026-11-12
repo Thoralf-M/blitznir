@@ -2,8 +2,7 @@
 //! focus back: Accessibility and NSRunningApplication.
 
 use blitznir_core::platform::{Bounds, Rect};
-use objc2::runtime::NSObjectProtocol;
-use objc2::sel;
+use objc2::{runtime::NSObjectProtocol, sel};
 use objc2_app_kit::{
     NSApplication, NSApplicationActivationOptions, NSRunningApplication, NSWorkspace,
 };
@@ -11,10 +10,12 @@ use objc2_application_services::{AXError, AXUIElement, AXValue, AXValueType};
 use objc2_core_foundation::{
     CFArray, CFBoolean, CFRetained, CFString, CFType, CGPoint, CGRect, CGSize,
 };
-use std::collections::VecDeque;
-use std::ptr::NonNull;
-use std::thread;
-use std::time::{Duration, Instant};
+use std::{
+    collections::VecDeque,
+    ptr::NonNull,
+    thread,
+    time::{Duration, Instant},
+};
 
 type Ax<T> = std::result::Result<T, AXError>;
 

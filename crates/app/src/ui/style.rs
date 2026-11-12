@@ -3,10 +3,10 @@
 //! one palette of its own is the Settings editor's syntax colours.
 
 use super::select::Selectable;
-use freya::code_editor::{
-    CodeEditorThemeExt, EditorSyntaxTheme, EditorTheme, EditorThemePreference,
+use freya::{
+    code_editor::{CodeEditorThemeExt, EditorSyntaxTheme, EditorTheme, EditorThemePreference},
+    prelude::*,
 };
-use freya::prelude::*;
 
 #[derive(Clone, Copy, PartialEq)]
 pub struct Palette {

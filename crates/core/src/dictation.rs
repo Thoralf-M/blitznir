@@ -6,15 +6,21 @@
 //! that can go wrong); a stuck flush gives up after `flush_timeout` and keeps
 //! what it has.
 
-use crate::Result;
-use crate::platform::{Platform, Recognizer};
-use crate::segmenter::{Out, SegConfig, Segmenter};
-use crate::store::Store;
-use crate::textproc::{divergence, typing_diff};
-use crate::vocab::Vocab;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{Receiver, RecvTimeoutError};
-use std::time::{Duration, Instant};
+use crate::{
+    Result,
+    platform::{Platform, Recognizer},
+    segmenter::{Out, SegConfig, Segmenter},
+    store::Store,
+    textproc::{divergence, typing_diff},
+    vocab::Vocab,
+};
+use std::{
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc::{Receiver, RecvTimeoutError},
+    },
+    time::{Duration, Instant},
+};
 
 #[derive(Debug, Clone)]
 pub struct Opts {

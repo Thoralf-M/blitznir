@@ -2,25 +2,29 @@
 //! (answers as markdown, the user's words literal, a Copy on every message).
 //! It follows the text to the bottom while the reader is there (follow.rs).
 
-use super::answer::{Body, use_selection};
-use super::follow::use_follow;
-use super::icons::{self, icon_button};
-use super::opened::{self, Delete, DictationCard, Head};
-use super::reasoning::{Live, Reasoning, use_live};
-use super::section::choice;
-use super::select::Selectable;
-use super::style::{Look, Palette, head, use_palette};
-use super::thinking::{Thinking, Wave, use_wave};
-use super::thumbs::{Shown, thumbs};
-use crate::panel::Panel;
-use crate::panel::view::{self, Msg, RET, Ui};
-use blitznir_core::markdown::select::{self, Piece};
-use blitznir_core::store::Unthought;
-use blitznir_core::tasks;
+use super::{
+    answer::{Body, use_selection},
+    follow::use_follow,
+    icons::{self, icon_button},
+    opened::{self, Delete, DictationCard, Head},
+    reasoning::{Live, Reasoning, use_live},
+    section::choice,
+    select::Selectable,
+    style::{Look, Palette, head, use_palette},
+    thinking::{Thinking, Wave, use_wave},
+    thumbs::{Shown, thumbs},
+};
+use crate::panel::{
+    Panel,
+    view::{self, Msg, RET, Ui},
+};
+use blitznir_core::{
+    markdown::select::{self, Piece},
+    store::Unthought,
+    tasks,
+};
 use freya::prelude::*;
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::sync::Arc;
+use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 /// "16:10" of a message's stamp.
 fn clock(ts: &str) -> String {

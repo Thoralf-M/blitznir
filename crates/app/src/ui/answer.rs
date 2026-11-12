@@ -5,18 +5,23 @@
 //! over plain paragraphs (core's markdown::select does the arithmetic).
 //! A link is its text plus a small button that opens it.
 
-use super::icons::{self, icon_button};
-use super::keys::command;
-use super::spans::span;
-use super::style::{Palette, use_palette};
+use super::{
+    icons::{self, icon_button},
+    keys::command,
+    spans::span,
+    style::{Palette, use_palette},
+};
 use crate::panel::Panel;
-use blitznir_core::markdown::select::{self, Piece, Point, len16, range_in};
-use blitznir_core::markdown::{Block, Run};
-use freya::elements::paragraph::ParagraphCursorExt;
-use freya::prelude::*;
-use std::cell::{Cell, RefCell};
-use std::rc::Rc;
-use std::sync::Arc;
+use blitznir_core::markdown::{
+    Block, Run,
+    select::{self, Piece, Point, len16, range_in},
+};
+use freya::{elements::paragraph::ParagraphCursorExt, prelude::*};
+use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+    sync::Arc,
+};
 
 pub(super) const SIZE: f32 = 13.0;
 const CODE_SIZE: f32 = 12.0;

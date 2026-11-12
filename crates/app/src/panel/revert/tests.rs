@@ -109,8 +109,7 @@ fn a_tall_selection_never_pushes_the_box_off_the_bottom() {
 
 #[test]
 fn a_whole_field_puts_the_box_by_the_mouse_not_above_the_field() {
-    use blitznir_core::platform::Bounds;
-    use blitznir_core::sky;
+    use blitznir_core::{platform::Bounds, sky};
     // no rect for the text, only the focused element: a whole view
     let field = Bounds {
         rect: Rect {

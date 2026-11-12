@@ -2,9 +2,11 @@
 //! neither needs the key swallowed, so the OS listener stays listen-only.
 
 use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
-use std::fmt;
-use std::time::{Duration, Instant};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt,
+    time::{Duration, Instant},
+};
 
 /// A physical key a hotkey can name, as written in config.toml.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]

@@ -2,11 +2,13 @@
 //! daemon, in `blitznir.log` too. RUST_LOG=debug (a bare level) shows more,
 //! and other crates' info lines too.
 
-use std::fs::{File, OpenOptions, Permissions};
-use std::io::Write;
-use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
-use std::path::Path;
-use std::sync::Mutex;
+use std::{
+    fs::{File, OpenOptions, Permissions},
+    io::Write,
+    os::unix::fs::{OpenOptionsExt, PermissionsExt},
+    path::Path,
+    sync::Mutex,
+};
 
 /// The log file is emptied on start once it is bigger than this.
 const MAX_LOG_BYTES: u64 = 5 << 20;

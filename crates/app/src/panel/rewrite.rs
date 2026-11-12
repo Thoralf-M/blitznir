@@ -2,14 +2,18 @@
 //! and where their result goes: core's delivery along the route fixed when
 //! the job started.
 
-use super::job::Doing;
-use super::view::{self, Busy, MOD, Shot, View};
-use super::{Panel, Said};
-use blitznir_core::jobs::{self, Delivered, Route, Unfinished};
-use blitznir_core::llm::CancellationToken;
-use blitznir_core::lock;
-use blitznir_core::store::Made;
-use blitznir_core::tasks::{self, Kind};
+use super::{
+    Panel, Said,
+    job::Doing,
+    view::{self, Busy, MOD, Shot, View},
+};
+use blitznir_core::{
+    jobs::{self, Delivered, Route, Unfinished},
+    llm::CancellationToken,
+    lock,
+    store::Made,
+    tasks::{self, Kind},
+};
 use std::sync::{Arc, Mutex};
 
 /// What a rewrite or translation shows while it runs, and what the history

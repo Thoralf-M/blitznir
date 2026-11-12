@@ -4,12 +4,12 @@
 //! rest ([`AUTOSAVE`]), the Text tab with Save.
 
 use super::{Panel, spawn};
-use blitznir_core::config::form::{self, Column, Field, Rows};
-use blitznir_core::lock;
-use blitznir_core::platform::KeyEvent;
-use std::sync::atomic::Ordering;
-use std::thread;
-use std::time::Duration;
+use blitznir_core::{
+    config::form::{self, Column, Field, Rows},
+    lock,
+    platform::KeyEvent,
+};
+use std::{sync::atomic::Ordering, thread, time::Duration};
 
 /// The form saves this long after its last change: typing "600" passes
 /// through 6 and 60, and a server's URL would be asked for models at every

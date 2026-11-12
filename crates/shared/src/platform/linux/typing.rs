@@ -1,13 +1,13 @@
 //! The uinput keyboard `blitznir-kbd`: types through the xkb reverse map,
 //! below the compositor, so it works on X11 and every Wayland desktop.
 
-use super::keymap::{Stroke, layout_map};
-use super::keys::OWN_DEVICE;
+use super::{
+    keymap::{Stroke, layout_map},
+    keys::OWN_DEVICE,
+};
 use blitznir_core::config::Linux as LinuxConfig;
-use evdev::uinput::VirtualDevice;
-use evdev::{AttributeSet, InputEvent, KeyCode, KeyEvent};
-use std::collections::HashMap;
-use std::time::Duration;
+use evdev::{AttributeSet, InputEvent, KeyCode, KeyEvent, uinput::VirtualDevice};
+use std::{collections::HashMap, time::Duration};
 
 /// Gap after every key frame; some apps drop keys sent faster.
 const GAP: Duration = Duration::from_millis(2);

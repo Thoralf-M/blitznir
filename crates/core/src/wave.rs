@@ -6,10 +6,11 @@
 //! frame; the rest is a pure function of time, as core's beam is. The
 //! numbers were tuned by eye.
 
-use crate::beam::{ease, smooth};
-use crate::platform::Rect;
-use std::collections::VecDeque;
-use std::time::Duration;
+use crate::{
+    beam::{ease, smooth},
+    platform::Rect,
+};
+use std::{collections::VecDeque, time::Duration};
 
 /// The head's taper behind the tip, in points: its glow, grain and the
 /// wave's flattening all follow one curve over it.

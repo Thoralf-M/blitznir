@@ -2,9 +2,11 @@
 //! sent through the compositor), and an app that never closes it must not
 //! keep a thread of ours blocked for good.
 
-use std::io::{ErrorKind, PipeReader, Read};
-use std::os::fd::AsRawFd;
-use std::time::{Duration, Instant};
+use std::{
+    io::{ErrorKind, PipeReader, Read},
+    os::fd::AsRawFd,
+    time::{Duration, Instant},
+};
 
 /// Everything until the writer closes; None: `within` ran out first.
 pub fn read_within(from: &mut PipeReader, within: Duration) -> Option<Vec<u8>> {
@@ -50,8 +52,7 @@ fn readable(from: &PipeReader, left: Duration) -> Option<bool> {
 #[cfg(test)]
 mod tests {
     use super::read_within;
-    use std::io::Write;
-    use std::time::Duration;
+    use std::{io::Write, time::Duration};
 
     #[test]
     fn it_reads_to_the_close_and_gives_up_on_a_writer_that_stays() {

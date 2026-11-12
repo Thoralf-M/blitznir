@@ -2,9 +2,11 @@
 //! heading row itself: no dialog. The Chats heading also starts a new chat.
 //! History's heading folds dictations and replacements into one line.
 
-use super::icons::{self, icon, icon_button};
-use super::style::{Look, Palette, button, head, pressable, use_palette};
-use super::tip::Tip;
+use super::{
+    icons::{self, icon, icon_button},
+    style::{Look, Palette, button, head, pressable, use_palette},
+    tip::Tip,
+};
 use crate::panel::{List, Panel, noun};
 use freya::prelude::*;
 use std::sync::Arc;

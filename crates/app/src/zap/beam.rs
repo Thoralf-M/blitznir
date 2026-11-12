@@ -16,14 +16,20 @@ const LAND_AT: f64 = 0.5;
 
 use super::{Msg, SEEN, TICK, Zap};
 use crate::tray::GLOW_PEAK;
-use blitznir_core::beam::{CANCEL_SECS, End, LAND_SECS, Phase};
-use blitznir_core::sky::Sky;
+use blitznir_core::{
+    beam::{CANCEL_SECS, End, LAND_SECS, Phase},
+    sky::Sky,
+};
 pub use draw::{Cache, draw};
-use std::sync::Arc;
-use std::sync::atomic::Ordering;
-use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
-use std::thread;
-use std::time::{Duration, Instant};
+use std::{
+    sync::{
+        Arc,
+        atomic::Ordering,
+        mpsc::{Receiver, RecvTimeoutError, Sender},
+    },
+    thread,
+    time::{Duration, Instant},
+};
 
 pub type Pt = (f32, f32);
 

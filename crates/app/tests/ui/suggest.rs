@@ -2,8 +2,7 @@
 //! offers the rewrite; the box's switch writes the setting.
 
 use super::kit::*;
-use blitznir_core::platform::Platform;
-use blitznir_core::platform::fake::FakePlatform;
+use blitznir_core::platform::{Platform, fake::FakePlatform};
 use freya::prelude::LaunchProxy;
 use std::sync::Arc;
 
@@ -229,8 +228,7 @@ pub fn the_box_shows_either_text_and_the_switch(proxy: &LaunchProxy) {
 /// sliver at the left of a 160 pt frame with the Remove far beside it.
 pub fn a_tall_image_gets_a_narrow_thumbnail(proxy: &LaunchProxy) {
     use blitznir_core::lock;
-    use freya::elements::image::Image;
-    use freya::prelude::Size2D;
+    use freya::{elements::image::Image, prelude::Size2D};
     use freya_testing::prelude::*;
     let mut png = Vec::new();
     image::RgbImage::from_pixel(60, 300, image::Rgb([200, 120, 40]))

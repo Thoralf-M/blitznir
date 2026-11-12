@@ -18,10 +18,12 @@
 //! A buffer without a single voiced 50 ms frame is never decoded: the int8
 //! model invents "Thank you." on silence.
 
-use crate::Result;
-use crate::config::Dictation;
-use crate::platform::{Recognizer, Token};
-use crate::textproc::{smart_join, stable_prefix};
+use crate::{
+    Result,
+    config::Dictation,
+    platform::{Recognizer, Token},
+    textproc::{smart_join, stable_prefix},
+};
 
 pub const SAMPLE_RATE: usize = 16_000;
 /// RMS frame; also the capture block size.

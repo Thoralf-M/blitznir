@@ -6,13 +6,16 @@
 
 use super::Panel;
 use crate::ui;
-use blitznir_core::lock;
-use blitznir_core::platform::Rect;
-use freya::prelude::{CloseDecision, RendererContext, WindowConfig};
-use freya::winit::dpi::{LogicalPosition, LogicalSize};
-use std::sync::{Arc, mpsc};
-use std::thread;
-use std::time::Duration;
+use blitznir_core::{lock, platform::Rect};
+use freya::{
+    prelude::{CloseDecision, RendererContext, WindowConfig},
+    winit::dpi::{LogicalPosition, LogicalSize},
+};
+use std::{
+    sync::{Arc, mpsc},
+    thread,
+    time::Duration,
+};
 
 /// The panel window, in points.
 const SIZE: (f64, f64) = (760.0, 540.0);

@@ -2,15 +2,19 @@
 //! runs the default button (the first action until a chat is entered, then
 //! Send); Shift+Return starts a new line. Above it, the activity strip.
 
-use super::dictation::{Dictation, PAD, use_wave};
-use super::icons::{self, icon, icon_button, icon_button_if};
-use super::keys::{command, field_keys};
-use super::select::Selectable;
-use super::style::{Look, Palette, button_if, pressable, use_palette};
-use super::thumbs::{Shown, thumbs};
-use super::tip::Tip;
-use crate::panel::Panel;
-use crate::panel::view::{self, MOD, RET, Strip, Tone, Ui, View};
+use super::{
+    dictation::{Dictation, PAD, use_wave},
+    icons::{self, icon, icon_button, icon_button_if},
+    keys::{command, field_keys},
+    select::Selectable,
+    style::{Look, Palette, button_if, pressable, use_palette},
+    thumbs::{Shown, thumbs},
+    tip::Tip,
+};
+use crate::panel::{
+    Panel,
+    view::{self, MOD, RET, Strip, Tone, Ui, View},
+};
 use blitznir_core::tasks::{self, Kind};
 use freya::prelude::*;
 use std::sync::Arc;

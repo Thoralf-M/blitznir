@@ -36,14 +36,11 @@ mod transcript;
 mod viewer;
 mod zoom;
 
-use crate::panel::Panel;
-use crate::panel::view::Ui;
+use crate::panel::{Panel, view::Ui};
 use composer::{Composer, activity};
 use freya::prelude::*;
 use keys::command;
-use std::cell::Cell;
-use std::rc::Rc;
-use std::sync::Arc;
+use std::{cell::Cell, rc::Rc, sync::Arc};
 use style::Palette;
 
 /// Below this window width the sidebar folds away by itself.

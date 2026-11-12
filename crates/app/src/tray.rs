@@ -7,22 +7,27 @@
 //! change is posted to that thread: `LaunchProxy::post_callback` on macOS,
 //! `glib::idle_add_once` on Linux.
 
-use crate::autostart;
-use crate::panel::Panel;
-use blitznir::platform;
-use blitznir::session::{FLASH, title};
-use blitznir_core::dictation::Phase;
-use blitznir_core::lock;
-use blitznir_core::platform::Platform;
+use crate::{autostart, panel::Panel};
+use blitznir::{
+    platform,
+    session::{FLASH, title},
+};
+use blitznir_core::{dictation::Phase, lock, platform::Platform};
 #[cfg(target_os = "linux")]
 use freya::prelude::LaunchConfig;
-use freya::prelude::{LaunchProxy, RendererContext};
-use freya::tray::menu::{self, CheckMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem};
-use freya::tray::{Icon, TrayEvent, TrayIcon, TrayIconBuilder};
-use std::cell::RefCell;
-use std::sync::{Arc, Mutex, OnceLock, Weak, mpsc};
-use std::thread;
-use std::time::{Duration, Instant};
+use freya::{
+    prelude::{LaunchProxy, RendererContext},
+    tray::{
+        Icon, TrayEvent, TrayIcon, TrayIconBuilder,
+        menu::{self, CheckMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem},
+    },
+};
+use std::{
+    cell::RefCell,
+    sync::{Arc, Mutex, OnceLock, Weak, mpsc},
+    thread,
+    time::{Duration, Instant},
+};
 
 /// Lightning (zap.rs) makes the hammer glow up to this strength and back.
 pub const GLOW_PEAK: usize = 5;

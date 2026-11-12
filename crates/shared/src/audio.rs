@@ -2,18 +2,22 @@
 //! the CURRENT default device, opened per recording so a mic plugged in later
 //! is used), or a WAV file replayed at real time for a deterministic test.
 
-use blitznir_core::segmenter::SAMPLE_RATE;
-use blitznir_core::{Error, Result};
-use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{FromSample, Sample, SampleFormat, SizedSample, Stream, StreamConfig};
-use rubato::audioadapter_buffers::direct::InterleavedSlice;
-use rubato::{Fft, FixedSync, Resampler};
-use std::path::Path;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, RecvTimeoutError, Sender};
-use std::thread::{self, JoinHandle};
-use std::time::{Duration, Instant};
+use blitznir_core::{Error, Result, segmenter::SAMPLE_RATE};
+use cpal::{
+    FromSample, Sample, SampleFormat, SizedSample, Stream, StreamConfig,
+    traits::{DeviceTrait, HostTrait, StreamTrait},
+};
+use rubato::{Fft, FixedSync, Resampler, audioadapter_buffers::direct::InterleavedSlice};
+use std::{
+    path::Path,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+        mpsc::{self, RecvTimeoutError, Sender},
+    },
+    thread::{self, JoinHandle},
+    time::{Duration, Instant},
+};
 
 #[derive(Debug, Clone)]
 pub enum Source {

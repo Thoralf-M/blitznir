@@ -3,8 +3,10 @@
 //! the overlay's ink over any app; the dark ink draws dark grey for the
 //! panel's light theme. Each call is one path per pass.
 
-use super::Pt;
-use super::sprite::{INK, Rgb, Sprite, Sprites};
+use super::{
+    Pt,
+    sprite::{INK, Rgb, Sprite, Sprites},
+};
 use freya::engine::prelude::{
     BlendMode, Canvas, Color4f, Colors, FilterMode, Gradient, Interpolation, Paint, PaintCap,
     PaintJoin, PaintStyle, PathBuilder, SkRect, TileMode, shaders,

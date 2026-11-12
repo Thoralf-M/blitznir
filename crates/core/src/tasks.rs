@@ -2,8 +2,10 @@
 //! picks the translate direction, and the model picker's filter. Prompts live
 //! here only; `fixtures/prompts.md` holds the golden copies tests check them against.
 
-use crate::config::{Config, DEFAULT_TOML, Translate};
-use crate::llm::MAX_TOKENS_CEILING;
+use crate::{
+    config::{Config, DEFAULT_TOML, Translate},
+    llm::MAX_TOKENS_CEILING,
+};
 use regex::{Regex, RegexBuilder};
 use serde_json::{Value, json};
 

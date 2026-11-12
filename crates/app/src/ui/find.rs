@@ -1,9 +1,7 @@
 //! Search in config.toml (Settings' text tab): the sidebar's search selects
 //! a match in the editor and scrolls it into view; Return goes to the next.
 
-use freya::code_editor::CodeEditorData;
-use freya::prelude::*;
-use freya::text_edit::TextEditor;
+use freya::{code_editor::CodeEditorData, prelude::*, text_edit::TextEditor};
 
 /// The editor's line height: CodeEditor's default 1.4 of the font size.
 const LINE: f32 = (super::settings::FONT_SIZE * 1.4) as i32 as f32;

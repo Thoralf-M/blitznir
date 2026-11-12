@@ -3,13 +3,17 @@
 //! Return runs outside and inside a chat, remove. The last line, Chat /
 //! Send, is what Return does where no button is marked.
 
-use super::form::{add, card, edit, table_error, title};
-use super::icons::{self, icon_button};
-use super::style::{Look, Palette, button, pressable, use_palette};
-use super::tip::Tip;
-use crate::panel::Panel;
-use crate::panel::form::Target;
-use crate::panel::view::{RET, Ui};
+use super::{
+    form::{add, card, edit, table_error, title},
+    icons::{self, icon_button},
+    style::{Look, Palette, button, pressable, use_palette},
+    tip::Tip,
+};
+use crate::panel::{
+    Panel,
+    form::Target,
+    view::{RET, Ui},
+};
 use blitznir_core::config::form::{self, Column, Rows};
 use freya::prelude::*;
 use std::sync::Arc;
