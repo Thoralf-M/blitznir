@@ -119,10 +119,6 @@ fn frame(
     })
 }
 
-fn inside(r: &Rect, (x, y): (f64, f64)) -> bool {
-    (r.x..=r.x + r.w).contains(&x) && (r.y..=r.y + r.h).contains(&y)
-}
-
 impl Panel {
     /// The dictation `original` was replaced by `rewrite` in `to`: offer it back.
     pub(super) fn offer_revert(self: &Arc<Self>, to: Focus, original: &str, rewrite: &str) {
@@ -257,7 +253,7 @@ impl Panel {
         let ends = match ev {
             KeyEvent::Other | KeyEvent::FKey(_) => !o.held, // held: typed into the box
             KeyEvent::Click => {
-                let hit = self.platform.mouse().is_some_and(|m| inside(&o.frame, m));
+                let hit = self.platform.mouse().is_some_and(|m| o.frame.contains(m));
                 // nothing in the button's box to read: a press must not pin it
                 (o.held, o.clicked) = (o.held || hit && !o.pick, hit); // outside: another app's
 

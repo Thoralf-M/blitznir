@@ -1,4 +1,5 @@
-//! The images for the next message: screen capture and image paste.
+//! The images for the next message: screen capture and image paste; the
+//! Copy buttons (text and images) and an answer's links.
 
 use super::view::Shot;
 use super::{BUSY, Panel, spawn};
@@ -60,6 +61,26 @@ impl Panel {
         match &shot.full {
             Some(full) => self.store.put_original(name, full),
             None => Ok(()),
+        }
+    }
+
+    /// A Copy button, on a thread of its own: on Linux the clipboard waits
+    /// for the GTK thread.
+    pub fn copy(self: &Arc<Self>, text: String, said: String) {
+        let me = self.clone();
+        let copy = move || match me.platform.set_clipboard(&text) {
+            Ok(()) => me.say(said),
+            Err(e) => me.fail(format!("Copy failed: {e}")),
+        };
+        if let Err(e) = spawn("copy", copy) {
+            self.fail(format!("Copy failed: {e}"));
+        }
+    }
+
+    /// A link's open button in an answer.
+    pub fn open_link(&self, url: &str) {
+        if let Err(e) = self.platform.open_url(url) {
+            self.fail(format!("Could not open {url}: {e}"));
         }
     }
 

@@ -21,7 +21,7 @@ fn the_box_sits_above_the_text_unless_the_menu_bar_is_there() {
         "on screen"
     );
     assert!(frame(SMALL, None, None, &[]).is_none());
-    assert!(inside(&f, (110.0, f.y + 1.0)) && !inside(&f, (90.0, f.y + 1.0)));
+    assert!(f.contains((110.0, f.y + 1.0)) && !f.contains((90.0, f.y + 1.0)));
 }
 
 #[test]
