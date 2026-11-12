@@ -361,8 +361,9 @@ impl Panel {
         }
     }
 
-    /// The app says the selection cannot be replaced, so the
-    /// original and its translation become a chat turn instead.
+    /// The app says the selection cannot be replaced, so the original and
+    /// its translation show as a chat turn instead, kept in the history
+    /// (jobs::deliver), not as a chat: a question about it saves the chat.
     pub(super) fn show_translation(&self, text: &str, shots: &[Shot], out: String, copied: bool) {
         let names = self.keep_images(shots).unwrap_or_else(|e| {
             log::error!("images: {e}");
@@ -375,17 +376,10 @@ impl Panel {
         let turn = tasks::translation_turn(text);
         v.chat.messages.push(message("user", &turn, names));
         v.chat.messages.push(message("assistant", &out, vec![]));
-        if let Err(e) = self.store.save_chat(&mut v.chat) {
-            log::error!("chats.json: {e}");
-        }
         log::info!("translation shown in the panel, on the clipboard: {copied}");
         (v.ui.chatting, v.ui.settings) = (true, false);
         v.ui.status
             .set("Ask about it, copy it, or Write out pastes it");
         self.sync_chat(&mut v);
-        drop(v);
-        let rows = self.rows(); // reads chats.json: never under the lock
-        self.with_ui(|ui| ui.chats = rows);
-        self.tray.refresh(); // its Delete all chats counts them
     }
 }

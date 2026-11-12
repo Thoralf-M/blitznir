@@ -138,6 +138,12 @@ pub fn a_quick_translation_on_a_page_shows_the_panel(proxy: &LaunchProxy) {
         Some("Hallo Welt")
     );
     assert_eq!(platform.clipboard(), "Hallo Welt");
+    // a translation is the history's, not a new chat
+    assert!(ui.chats.is_empty(), "no chat saved");
+    assert_eq!(
+        ui.recent.first().map(|r| r.mode.as_str()),
+        Some("translate")
+    );
     let app = move || ui::app(panel.clone());
     let (mut t, ()) = TestingRunner::new(app, Size2D::new(WINDOW.0, WINDOW.1), |_| {}, 1.0);
     settle(&mut t);
