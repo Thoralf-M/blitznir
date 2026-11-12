@@ -90,14 +90,21 @@ impl Component for Edge {
 /// heights as laid out, and the edge over them; `shows`: which lists show.
 pub(super) fn use_room(
     shows: [bool; 2],
-    chats_open: bool,
+    chats: Option<usize>,
     kept: Option<f32>,
 ) -> (f32, Rc<[Cell<f32>; 2]>, Edge) {
     let drag = use_state(|| None::<f32>);
     let laid = use_hook(|| Rc::new([Cell::new(0.0), Cell::new(0.0)]));
+    let last = use_hook(|| Rc::new(Cell::new(0.0_f32)));
     let open = shows.iter().filter(|s| **s).count();
     let h = super::super::window_size().height;
-    let cap = caps(h, open, chats_open, drag().or(kept));
+    // the open lists shorter than the last cap: their own height, as laid out
+    let short: Vec<f32> = (0..2)
+        .filter(|i| shows[*i] && laid[*i].get() < last.get() - 1.0)
+        .map(|i| laid[i].get())
+        .collect();
+    let cap = caps(h, open, chats, drag().or(kept), &short);
+    last.set(cap);
     let edge = Edge {
         drag,
         laid: laid.clone(),
@@ -109,11 +116,13 @@ pub(super) fn use_room(
 
 /// The window's header, the search, three headings, the edge and a rule, with a
 /// little slack: what the lists cannot have (measured in a 300 pt window).
-pub(super) const FIXED: f32 = 205.0;
+pub(super) const FIXED: f32 = 178.0;
 /// The chats keep this much while they show, or this share of a short window.
 pub(super) const CHATS_MIN: f32 = 160.0;
-/// A drag of the edge leaves the chats this much: two rows.
+/// A drag of the edge leaves the chats this much: two rows, one if there
+/// is only one.
 pub(super) const CHATS_DRAGGED: f32 = 56.0;
+const CHAT_ROW: f32 = CHATS_DRAGGED / 2.0;
 const CHATS_SHARE: f32 = 0.35;
 /// A recent list takes at most this share of the window.
 pub(super) const RECENT_SHARE: f32 = 0.22;
@@ -121,19 +130,44 @@ pub(super) const RECENT_SHARE: f32 = 0.22;
 /// The most each open recent list may take of a window `h` tall: its share
 /// (`dragged`, or [`RECENT_SHARE`]), less when the chats need the room,
 /// nothing but its heading in a window too short for both (the chats'
-/// heading never leaves it); all the room shared when the chats are folded.
-pub(super) fn caps(h: f32, open_recent: usize, chats_open: bool, dragged: Option<f32>) -> f32 {
-    let chats = match (chats_open, dragged) {
-        (false, _) => 0.0,
-        (true, None) => CHATS_MIN.min(h * CHATS_SHARE),
-        (true, Some(_)) => CHATS_DRAGGED,
+/// heading never leaves it); all the room shared when the chats are folded
+/// (`chats`: None, else their rows).
+/// `short`: the heights of open lists with fewer rows than that, which
+/// leave the rest of their part of the room to the others.
+pub(super) fn caps(
+    h: f32,
+    open_recent: usize,
+    chats: Option<usize>,
+    dragged: Option<f32>,
+    short: &[f32],
+) -> f32 {
+    let chats_open = chats.is_some();
+    let chats = match (chats, dragged) {
+        (None, _) => 0.0,
+        (Some(_), None) => CHATS_MIN.min(h * CHATS_SHARE),
+        (Some(rows), Some(_)) => CHATS_DRAGGED.min(CHAT_ROW * rows.max(1) as f32),
     };
-    let each = ((h - FIXED - chats) / open_recent.max(1) as f32).max(0.0);
+    let each = shared((h - FIXED - chats).max(0.0), open_recent.max(1), short);
     match dragged.filter(|_| chats_open) {
         Some(share) => (h * share).min(each),
         None if chats_open => (h * RECENT_SHARE).min(each),
         None => each,
     }
+}
+
+/// The most each of `n` lists may take of `room` when the `short` ones keep
+/// their own heights: a short list that fits its part leaves the rest of it.
+fn shared(room: f32, n: usize, short: &[f32]) -> f32 {
+    let mut short = short.to_vec();
+    short.sort_by(f32::total_cmp);
+    let (mut left, mut n) = (room, n);
+    for s in short {
+        if n <= 1 || s * n as f32 > left {
+            break;
+        }
+        (left, n) = (left - s, n - 1);
+    }
+    left / n as f32
 }
 
 /// The cap that moves the edge by `up` points from where the lists were

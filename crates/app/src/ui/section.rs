@@ -44,7 +44,7 @@ pub fn history_heading(
     let b = button(p, Look::Tool).padding((1.0, 2.0)).child(heading);
     rect()
         .width(Size::fill())
-        .padding((10.0, 1.0, 4.0, 6.0))
+        .padding((4.0, 1.0, 1.0, 6.0))
         .child(pressable(b, move |_| {
             if !held {
                 fold.open_history(!open);
@@ -80,7 +80,7 @@ impl Component for Section {
             .content(Content::flex())
             .cross_align(Alignment::Center)
             .spacing(4.0)
-            .padding((10.0, 1.0, 4.0, 6.0));
+            .padding((4.0, 1.0, 1.0, 6.0));
         if asking() && n > 0 {
             let ask = head(&p, format!("Delete {n} {}?", noun(kind, n)))
                 .font_size(11.0)

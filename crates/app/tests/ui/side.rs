@@ -19,9 +19,10 @@ fn history_y(t: &TestingRunner) -> f32 {
         .min_y()
 }
 
-/// The edge's middle: over the heading's button and its padding.
+/// The edge's middle: over the heading's padding (4), its button's (1)
+/// and half the edge (4.5).
 fn edge_at(t: &TestingRunner) -> (f64, f64) {
-    (100.0, f64::from(history_y(t)) - 18.0)
+    (100.0, f64::from(history_y(t)) - 10.0)
 }
 
 /// Many chats and dictations, History open: a drag of the edge over it

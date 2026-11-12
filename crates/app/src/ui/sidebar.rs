@@ -328,7 +328,8 @@ impl Component for Sidebar {
         let history = ui.history_open || (found && in_history);
         let chats_open = !closed(List::Chats);
         let shows = [dict, repl].map(|l| history && !closed(l));
-        let (cap, laid, edge) = room::use_room(shows, chats_open, ui.history_share);
+        let chats_shown = chats_open.then_some(chat_rows.len());
+        let (cap, laid, edge) = room::use_room(shows, chats_shown, ui.history_share);
         let section = |kind, title, shown, total| Section {
             kind,
             title,
