@@ -103,6 +103,25 @@ pub fn a_mouse_selection_offers_translate(proxy: &LaunchProxy) {
         panel.translate_picked();
         lock(&platform.refocused).len() == 2
     });
+    // (a job running gets no button: the last one first)
+    wait_for("its paste", || lock(&platform.pasted_into).len() == 2);
+    wait_for("its job done", || panel.ui().busy.is_none());
+    // the app dropped the selection while the button had the click: the
+    // text read at the button is translated and shown, not pasted
+    *lock(&platform.selection) = Some("Good morning".into());
+    panel.saw(KeyEvent::Selected);
+    // the box asks the event loop for the screens first: 1 s without one here
+    std::thread::sleep(std::time::Duration::from_millis(1500));
+    let pastes = lock(&platform.pasted_into).len();
+    *lock(&platform.selection) = None;
+    panel.translate_picked();
+    wait_for("the translation shown", || {
+        let ui = panel.ui();
+        ui.selection.as_deref() == Some("Good morning")
+            && ui.busy.is_none()
+            && !ui.messages.is_empty()
+    });
+    assert_eq!(lock(&platform.pasted_into).len(), pastes, "nothing pasted");
 }
 
 /// On a page that takes no text the quick translation is shown in the panel.

@@ -2,7 +2,7 @@
 //! Undo last replace. Both answer in the tray.
 
 use super::{Mode, Panel, spawn};
-use blitznir_core::platform::CopyToken;
+use blitznir_core::platform::{CopyToken, Focus};
 use blitznir_core::store::Chat;
 use blitznir_core::tasks::Kind;
 use blitznir_core::{jobs, lock};
@@ -25,7 +25,7 @@ impl Panel {
         }
     }
 
-    pub(super) fn quick_now(self: &Arc<Self>, kind: Kind, button: Option<usize>) {
+    fn quick_now(self: &Arc<Self>, kind: Kind, button: Option<usize>) {
         // a box from before (the Translate button) is over the text; a
         // pressed one made us the active app, and the copy needs the app's
         self.end_offer(None, true);
@@ -39,6 +39,20 @@ impl Panel {
             return;
         }
         let editable = self.platform.focused_editable(&prev);
+        self.quick_on((kind, button), prev, text, editable, opened);
+    }
+
+    /// The quick action on `text`, selected in `prev` (`editable`: whether
+    /// the result can replace it there); `opened`: the panel's opens before
+    /// the text was read (one since: the panel is the user's now).
+    pub(super) fn quick_on(
+        self: &Arc<Self>,
+        (kind, button): (Kind, Option<usize>),
+        prev: Focus,
+        text: String,
+        editable: Option<bool>,
+        opened: u64,
+    ) {
         let bounds = (self.platform.selection_bounds(&prev)).filter(|b| b.fits(&text));
         if lock(&self.view).ui.opened != opened {
             log::info!("quick action: the panel opened meanwhile");

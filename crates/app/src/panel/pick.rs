@@ -95,7 +95,8 @@ impl Panel {
             };
             // an open box: the selection was made in it
             let taken = lock(&me.revert).is_some() || lock(&me.view).job.busy();
-            if fresh && !late && !taken && me.offer(to, "", "", BoxKind::Pick) {
+            // what the box holds is the text: the click translates that
+            if fresh && !late && !taken && me.offer(to, &text, "", BoxKind::Pick) {
                 lock(&me.pick).last = now;
             }
         };
@@ -104,19 +105,26 @@ impl Panel {
         }
     }
 
-    /// The button: the click made us the active app, so its app comes back
-    /// to the front, its selection still there, before the copy.
+    /// The button: the text read when it showed is translated, no copy. The
+    /// click made us the active app, so its app comes back to the front; an
+    /// app that lost the selection meanwhile (an Electron editor, seen) gets the
+    /// translation in the box by the text instead of a paste over nothing.
     pub fn translate_picked(self: &Arc<Self>) {
-        let Some((_, to)) = self.take_offer() else {
+        let Some((text, to)) = self.take_offer() else {
             return;
         };
         let me = self.clone();
         let run = move || {
-            if me.platform.refocus(&to) {
-                me.quick_now(Kind::Translate, None);
+            let opened = lock(&me.view).ui.opened;
+            let back = me.platform.refocus(&to);
+            let kept = back && me.platform.selected_text(&to).as_deref() == Some(text.as_str());
+            let editable = if kept {
+                me.platform.focused_editable(&to)
             } else {
-                me.tray.flash("Not translated: the app did not come back");
-            }
+                log::info!("translate button: the selection is gone, shown not pasted");
+                Some(false)
+            };
+            me.quick_on((Kind::Translate, None), to, text, editable, opened);
         };
         if let Err(e) = spawn("pick-translate", run) {
             log::error!("translate button: {e}");
