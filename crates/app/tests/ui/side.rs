@@ -84,8 +84,100 @@ pub fn the_edge_over_history_drags_its_share(proxy: &LaunchProxy) {
     let heading = |start: &str| label_where(&t, |s| s.starts_with(start)).expect(start);
     let rows = heading("Replacements ·").min_y() - heading("Dictations ·").max_y();
     assert!(
-        rows < 20.0,
-        "History down to its headings: {rows} pt of rows"
+        (20.0..=50.0).contains(&rows),
+        "History down to one row of its open list: {rows} pt of rows"
     );
     assert!(history_y(&t) > y0, "the chats got the room");
+}
+
+/// History pulled high with Replacements open, then Dictations opened: the
+/// list just opened has no height from the last frame yet, and must not
+/// count as a short one (0 pt) that leaves Replacements all the room; the
+/// column would overflow up over the search and the chats.
+pub fn second_list_under_chats(proxy: &LaunchProxy) {
+    use blitznir_core::store::Made;
+    let seed = |s: &Store| {
+        let made = Made::new("rewrite", "Rewrite", None);
+        for i in 0..10 {
+            s.add_history(&format!("dictated line {i}"), "live")
+                .expect("a dictation");
+            (s.add_replacement(&format!("after {i}"), &format!("before {i}"), &made))
+                .expect("a replacement");
+        }
+    };
+    let cfg = blitznir_core::config::Config::default();
+    let panel = panel_seeded(proxy, "history-reopen", &[], fake(), cfg, seed);
+    panel.open_history(true);
+    panel.set_history_share(0.9);
+    panel.fold_list(List::Rows(HistoryKind::Dictation));
+    let p = panel.clone();
+    let app = move || ui::app(p.clone());
+    let (mut t, ()) = TestingRunner::new(app, Size2D::new(WINDOW.0, TALL), |_| {}, 1.0);
+    settle(&mut t);
+    let heading = |t: &TestingRunner, start: &str| {
+        label_where(t, |s| s.starts_with(start))
+            .expect(start)
+            .min_y()
+    };
+    let chats = heading(&t, "Chats ·");
+    panel.fold_list(List::Rows(HistoryKind::Dictation)); // open it again
+    settle(&mut t);
+    shot(&mut t, "history-reopen");
+    assert_eq!(heading(&t, "Chats ·"), chats, "the chats' heading stays");
+    for start in ["History ·", "Dictations ·", "Replacements ·"] {
+        assert!(heading(&t, start) > chats, "{start} under the chats");
+    }
+}
+
+/// Once dragged, the edge stays where it was put: folding a list or
+/// History leaves it; at the bottom, a list opened raises it to show a row.
+pub fn edge_stays_put(proxy: &LaunchProxy) {
+    let seed = |s: &Store| {
+        for i in 0..10 {
+            s.add_history(&format!("dictated line {i}"), "live")
+                .expect("a dictation");
+        }
+    };
+    let cfg = blitznir_core::config::Config::default();
+    let panel = panel_seeded(proxy, "history-stays", &[], fake(), cfg, seed);
+    panel.open_history(true);
+    let p = panel.clone();
+    let app = move || ui::app(p.clone());
+    let (mut t, ()) = TestingRunner::new(app, Size2D::new(WINDOW.0, TALL), |_| {}, 1.0);
+    settle(&mut t);
+    let drag = |t: &mut TestingRunner, to: f64| {
+        let edge = edge_at(t);
+        t.move_cursor(edge);
+        t.press_cursor(edge);
+        settle(t);
+        t.move_cursor((edge.0, to));
+        settle(t);
+        t.release_cursor((edge.0, to));
+        settle(t);
+    };
+    let to = edge_at(&t).1 - f64::from(UP);
+    drag(&mut t, to);
+    let put = history_y(&t);
+    panel.fold_list(List::Rows(HistoryKind::Replacement));
+    settle(&mut t);
+    assert_eq!(history_y(&t), put, "a list folded: the edge stays");
+    panel.open_history(false);
+    settle(&mut t);
+    assert_eq!(history_y(&t), put, "History folded: the edge stays");
+    panel.open_history(true);
+    panel.fold_list(List::Rows(HistoryKind::Dictation));
+    settle(&mut t);
+    drag(&mut t, f64::from(TALL) + 100.0);
+    let bottom = history_y(&t);
+    assert!(bottom > put, "dragged down to the headings");
+    panel.fold_list(List::Rows(HistoryKind::Dictation)); // open it again
+    settle(&mut t);
+    shot(&mut t, "history-stays-opened");
+    let head = label_where(&t, |s| s.starts_with("Dictations ·")).expect("its heading");
+    let (_, row) = paragraph_with(&t, "dictated line 9").expect("its newest row");
+    assert!(history_y(&t) < bottom, "the edge rose for it");
+    assert!(
+        row.min_y() >= head.max_y() && row.max_y() <= TALL,
+        "a row shows: {row:?}"
+    );
 }

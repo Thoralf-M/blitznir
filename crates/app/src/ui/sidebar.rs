@@ -24,7 +24,7 @@ use crate::panel::{
 };
 use blitznir_core::store::{HistoryItem, HistoryKind};
 use freya::prelude::*;
-use room::{clear_of_bar, list};
+use room::list;
 use std::sync::Arc;
 
 /// A tooltip shows this much of each text at most.
@@ -334,8 +334,8 @@ impl Component for Sidebar {
         let history = ui.history_open || (found && in_history);
         let chats_open = !closed(List::Chats);
         let shows = [dict, repl].map(|l| history && !closed(l));
-        let chats_shown = chats_open.then_some(chat_rows.len());
-        let (cap, laid, edge) = room::use_room(shows, chats_shown, ui.history_share);
+        let room = room::use_room(shows, chats_open, ui.history_share);
+        let (cap, laid) = (room.cap, room.laid.clone());
         let section = |kind, title, shown, total| Section {
             kind,
             title,
@@ -354,12 +354,17 @@ impl Component for Sidebar {
                 .maybe_child((!closed(repl)).then(|| list(replaced_rows, cap, (laid.clone(), 1))))
         });
         // the chats take the room; History waits at the bottom
-        let chats_list = ScrollView::new()
-            .width(Size::fill())
-            .height(Size::flex(1.0))
-            .child(clear_of_bar(
-                chat_rows.into_iter().filter(|_| chats_open).collect(),
-            ));
+        let chats_list = room::chats_list(
+            chat_rows.into_iter().filter(|_| chats_open).collect(),
+            &laid,
+        );
+        let heading = history_heading(
+            &p,
+            &panel,
+            (history, found && in_history),
+            said_all + replaced_all,
+        );
+        let block = room::block(room.block, &laid, heading, lists);
         rect()
             .width(Size::px(self.width))
             .height(Size::fill())
@@ -369,14 +374,8 @@ impl Component for Sidebar {
             .child(search(&p, query))
             .child(section(List::Chats, "Chats", talks.len(), ui.chats.len()))
             .child(chats_list)
-            .child(edge)
-            .child(history_heading(
-                &p,
-                &panel,
-                (history, found && in_history),
-                said_all + replaced_all,
-            ))
-            .maybe_child(lists)
+            .child(room.edge)
+            .child(block)
     }
 }
 

@@ -10,50 +10,44 @@ use std::{cell::Cell, rc::Rc, sync::Arc};
 const EDGE: f32 = 9.0;
 
 /// The rule over History: drag it up for more History, down for more
-/// chats; the share is kept in state.json when the drag ends. Inert while
-/// no History list shows.
+/// chats. Once dragged, History is a block of that height (a share of the
+/// window, kept in state.json when the drag ends) that folding or a search
+/// leaves where it is; the edge follows the pointer, between one row of
+/// each open list and one row of the chats.
 #[derive(PartialEq)]
 pub(super) struct Edge {
     /// History's share while dragged, None otherwise; the sidebar reads it.
     pub drag: State<Option<f32>>,
-    /// The History lists' heights as laid out, in points, and which show.
-    pub laid: Rc<[Cell<f32>; 2]>,
-    pub shows: [bool; 2],
-    /// Each list's cap now.
-    pub cap: f32,
+    pub laid: Rc<Laid>,
+    /// The least the block may be, and the most (the chats keep a row).
+    pub bounds: (f32, f32),
 }
 
 impl Component for Edge {
     fn render(&self) -> impl IntoElement {
         let p = use_palette();
         let panel = use_consume::<Arc<Panel>>();
-        // the press's height, the cap then, the open lists' heights then
-        let mut from = use_state(|| None::<(f64, f32, [f32; 2], usize)>);
+        // the press's height and the block's then
+        let mut from = use_state(|| None::<(f64, f32)>);
         let mut hover = use_state(|| false);
-        let (mut drag, laid, shows, cap) = (self.drag, self.laid.clone(), self.shows, self.cap);
-        let open = shows.iter().filter(|s| **s).count();
+        let (mut drag, laid, (floor, most)) = (self.drag, self.laid.clone(), self.bounds);
         let down = move |e: Event<PointerEventData>| {
-            if open > 0 && e.data().is_primary() {
+            if e.data().is_primary() {
                 e.stop_propagation();
-                let mut heights = [0.0; 2];
-                let shown = (0..2).filter(|i| shows[*i]);
-                for (k, i) in shown.enumerate() {
-                    heights[k] = laid[i].get();
-                }
-                from.set(Some((e.global_location().y, cap, heights, open)));
+                from.set(Some((e.global_location().y, laid.block.get())));
             }
         };
         // a nudge below this keeps the share as it was
         const NUDGE: f64 = 3.0;
         let moved = move |e: Event<PointerEventData>| {
-            if let Some((y, cap, heights, n)) = from() {
+            if let Some((y, block)) = from() {
                 let up = y - e.global_location().y;
                 if up.abs() < NUDGE && drag.peek().is_none() {
                     return;
                 }
                 let h = super::super::window_size().height.max(1.0);
-                let to = cap_for(&heights[..n], cap, up as f32);
-                drag.set(Some((to / h).clamp(0.0, 1.0)));
+                let to = (block + up as f32).clamp(floor, most.max(floor));
+                drag.set(Some(to / h));
             }
         };
         let up = move |_: Event<PointerEventData>| {
@@ -66,12 +60,12 @@ impl Component for Edge {
                 panel.set_history_share(share.max(0.001)); // 0 is "never dragged"
             }
         };
-        let lit = open > 0 && (hover() || from().is_some());
+        let lit = hover() || from().is_some();
         rect()
             .width(Size::fill())
             .height(Size::px(EDGE))
             .main_align(Alignment::Center)
-            .maybe(open > 0, |r| r.cursor(CursorIcon::RowResize))
+            .cursor(CursorIcon::RowResize)
             .on_pointer_enter(move |_| hover.set(true))
             .on_pointer_leave(move |_| hover.set(false))
             .on_pointer_down(down)
@@ -86,32 +80,86 @@ impl Component for Edge {
     }
 }
 
-/// The History lists' cap (as kept, or as the edge is dragged), their
-/// heights as laid out, and the edge over them; `shows`: which lists show.
-pub(super) fn use_room(
-    shows: [bool; 2],
-    chats: Option<usize>,
-    kept: Option<f32>,
-) -> (f32, Rc<[Cell<f32>; 2]>, Edge) {
+/// What the last frame laid out, for the next: the History lists, History's
+/// block, the chats' list, and the block's content (headings and lists).
+#[derive(Default, PartialEq)]
+pub(super) struct Laid {
+    pub lists: [Cell<f32>; 2],
+    pub block: Cell<f32>,
+    pub chats: Cell<f32>,
+    pub content: Cell<f32>,
+    /// The cap and which lists showed: a list just opened was not laid out.
+    last: Cell<(f32, [bool; 2])>,
+}
+
+/// The sidebar's room: each History list's cap, what was laid out, the
+/// edge, and History's block height once dragged (None: as tall as it is).
+pub(super) struct Room {
+    pub cap: f32,
+    pub laid: Rc<Laid>,
+    pub edge: Edge,
+    pub block: Option<f32>,
+}
+
+/// The block's headings and padding, from the last frame: its content
+/// less the lists that `showed` in it (not the ones that show now: a list
+/// folded since was still in that content).
+pub(super) fn chrome(content: f32, lists: [f32; 2], showed: [bool; 2]) -> f32 {
+    let laid: f32 = (0..2).filter(|i| showed[*i]).map(|i| lists[i]).sum();
+    (content - laid).max(0.0)
+}
+
+/// A row of a list: what an opened list shows at least (a replacement's,
+/// its original above, is the taller).
+const ROW_MIN: f32 = 40.0;
+
+/// The room for `shows`' lists beside the chats, History's share as kept,
+/// or as the edge is dragged.
+pub(super) fn use_room(shows: [bool; 2], chats_open: bool, kept: Option<f32>) -> Room {
+    let panel = use_consume::<Arc<Panel>>();
     let drag = use_state(|| None::<f32>);
-    let laid = use_hook(|| Rc::new([Cell::new(0.0), Cell::new(0.0)]));
-    let last = use_hook(|| Rc::new(Cell::new(0.0_f32)));
+    let laid = use_hook(|| Rc::new(Laid::default()));
     let open = shows.iter().filter(|s| **s).count();
     let h = super::super::window_size().height;
-    // the open lists shorter than the last cap: their own height, as laid out
+    let (was, showed) = laid.last.get();
+    let shown = |i: &usize| shows[*i] && showed[*i];
     let short: Vec<f32> = (0..2)
-        .filter(|i| shows[*i] && laid[*i].get() < last.get() - 1.0)
-        .map(|i| laid[i].get())
+        .filter(|i| shown(i) && laid.lists[*i].get() < was - 1.0)
+        .map(|i| laid.lists[i].get())
         .collect();
-    let cap = caps(h, open, chats, drag().or(kept), &short);
-    last.set(cap);
+    let lists = [0, 1].map(|i| laid.lists[i].get());
+    let chrome = chrome(laid.content.get(), lists, showed);
+    let floor = chrome + ROW_MIN * open as f32;
+    let keep = if chats_open { CHAT_ROW } else { 0.0 };
+    let measured = laid.block.get() > 0.0;
+    let most = match measured {
+        true => laid.block.get() + laid.chats.get() - keep,
+        false => f32::MAX,
+    };
+    let (cap, block) = match drag().or(kept) {
+        None => (caps(h, open, chats_open, &short), None),
+        Some(share) => {
+            let block = (share * h).clamp(floor, most.max(floor));
+            // a list opened with no room: the edge rises to show a row, and stays
+            if measured && drag().is_none() && block > share * h + 0.5 {
+                panel.set_history_share(block / h);
+            }
+            let each = shared((block - chrome).max(0.0), open.max(1), &short);
+            (each, Some(block))
+        }
+    };
+    laid.last.set((cap, shows));
     let edge = Edge {
         drag,
         laid: laid.clone(),
-        shows,
-        cap,
+        bounds: (floor, most),
     };
-    (cap, laid, edge)
+    Room {
+        cap,
+        laid,
+        edge,
+        block,
+    }
 }
 
 /// The window's header, the search, three headings, the edge and a rule, with a
@@ -119,45 +167,35 @@ pub(super) fn use_room(
 pub(super) const FIXED: f32 = 178.0;
 /// The chats keep this much while they show, or this share of a short window.
 pub(super) const CHATS_MIN: f32 = 160.0;
-/// A drag of the edge leaves the chats this much: two rows, one if there
-/// is only one.
-pub(super) const CHATS_DRAGGED: f32 = 56.0;
-const CHAT_ROW: f32 = CHATS_DRAGGED / 2.0;
+/// A dragged edge leaves the chats a row.
+const CHAT_ROW: f32 = 28.0;
 const CHATS_SHARE: f32 = 0.35;
 /// A recent list takes at most this share of the window.
 pub(super) const RECENT_SHARE: f32 = 0.22;
 
-/// The most each open recent list may take of a window `h` tall: its share
-/// (`dragged`, or [`RECENT_SHARE`]), less when the chats need the room,
-/// nothing but its heading in a window too short for both (the chats'
-/// heading never leaves it); all the room shared when the chats are folded
-/// (`chats`: None, else their rows).
-/// `short`: the heights of open lists with fewer rows than that, which
-/// leave the rest of their part of the room to the others.
-pub(super) fn caps(
-    h: f32,
-    open_recent: usize,
-    chats: Option<usize>,
-    dragged: Option<f32>,
-    short: &[f32],
-) -> f32 {
-    let chats_open = chats.is_some();
-    let chats = match (chats, dragged) {
-        (None, _) => 0.0,
-        (Some(_), None) => CHATS_MIN.min(h * CHATS_SHARE),
-        (Some(rows), Some(_)) => CHATS_DRAGGED.min(CHAT_ROW * rows.max(1) as f32),
+/// The most each open recent list may take of a window `h` tall, the edge
+/// never dragged: its share ([`RECENT_SHARE`]), less when the chats need
+/// the room, nothing but its heading in a window too short for both (the
+/// chats' heading never leaves it); all the room shared when the chats are
+/// folded. `short`: the heights of open lists with fewer rows than that,
+/// which leave the rest of their part of the room to the others.
+pub(super) fn caps(h: f32, open_recent: usize, chats_open: bool, short: &[f32]) -> f32 {
+    let chats = if chats_open {
+        CHATS_MIN.min(h * CHATS_SHARE)
+    } else {
+        0.0
     };
     let each = shared((h - FIXED - chats).max(0.0), open_recent.max(1), short);
-    match dragged.filter(|_| chats_open) {
-        Some(share) => (h * share).min(each),
-        None if chats_open => (h * RECENT_SHARE).min(each),
-        None => each,
+    if chats_open {
+        (h * RECENT_SHARE).min(each)
+    } else {
+        each
     }
 }
 
 /// The most each of `n` lists may take of `room` when the `short` ones keep
 /// their own heights: a short list that fits its part leaves the rest of it.
-fn shared(room: f32, n: usize, short: &[f32]) -> f32 {
+pub(super) fn shared(room: f32, n: usize, short: &[f32]) -> f32 {
     let mut short = short.to_vec();
     short.sort_by(f32::total_cmp);
     let (mut left, mut n) = (room, n);
@@ -170,55 +208,51 @@ fn shared(room: f32, n: usize, short: &[f32]) -> f32 {
     left / n as f32
 }
 
-/// The cap that moves the edge by `up` points from where the lists were
-/// laid out under `cap`, at `heights`: a list shorter than the cap keeps
-/// its height until the cap comes down to it, so the edge follows the
-/// pointer, never runs ahead of it. Up from a short list starts at the cap.
-pub(super) fn cap_for(heights: &[f32], cap: f32, up: f32) -> f32 {
-    let short = |l: f32| l < cap - 1.0;
-    // a list at the cap has more rows than it shows: it would grow on
-    let laid_at = |c: f32| -> f32 {
-        heights
-            .iter()
-            .map(|&l| if short(l) { c.min(l) } else { c })
-            .sum()
-    };
-    let target = laid_at(cap) + up;
-    if heights.iter().all(|l| short(*l)) {
-        // nothing at the cap: up shows nothing more until rows come
-        return if up >= 0.0 {
-            cap + up
-        } else {
-            solve(laid_at, target, cap)
-        };
-    }
-    solve(laid_at, target, cap.max(0.0) + up.max(0.0) + 1.0)
-}
-
-/// The `c` in 0..`hi` where `laid_at(c)` (rising) reaches `target`.
-fn solve(laid_at: impl Fn(f32) -> f32, target: f32, hi: f32) -> f32 {
-    let (mut lo, mut hi) = (0.0_f32, hi.max(0.0));
-    for _ in 0..40 {
-        let mid = (lo + hi) / 2.0;
-        if laid_at(mid) < target {
-            lo = mid;
-        } else {
-            hi = mid;
-        }
-    }
-    hi
-}
-
 /// A history list at most `cap` points tall, its height noted in `laid`
 /// (for the edge's drag). In pixels: ScrollView puts its max_height on its
 /// content too, where a percentage is of the capped outer.
-pub(super) fn list(rows: Vec<Element>, cap: f32, laid: (Rc<[Cell<f32>; 2]>, usize)) -> ScrollView {
+pub(super) fn list(rows: Vec<Element>, cap: f32, laid: (Rc<Laid>, usize)) -> ScrollView {
     ScrollView::new()
         .width(Size::fill())
         .height(Size::auto())
         .max_height(Size::px(cap))
-        .on_sized(move |e: Event<SizedEventData>| laid.0[laid.1].set(e.area.height()))
+        .on_sized(move |e: Event<SizedEventData>| laid.0.lists[laid.1].set(e.area.height()))
         .child(clear_of_bar(rows))
+}
+
+/// The chats' list: it takes the room History leaves; its height noted
+/// in `laid` (the most the edge may take from it).
+pub(super) fn chats_list(rows: Vec<Element>, laid: &Rc<Laid>) -> ScrollView {
+    let laid = laid.clone();
+    ScrollView::new()
+        .width(Size::fill())
+        .height(Size::flex(1.0))
+        .on_sized(move |e: Event<SizedEventData>| laid.chats.set(e.area.height()))
+        .child(clear_of_bar(rows))
+}
+
+/// History's block: its `heading` and `lists`, as tall as they are or,
+/// once the edge was dragged, `block` tall (the rest empty, so folding or
+/// a search leaves the edge where it is). Both heights noted in `laid`.
+pub(super) fn block(
+    block: Option<f32>,
+    laid: &Rc<Laid>,
+    heading: Rect,
+    lists: Option<Rect>,
+) -> Rect {
+    let (l1, l2) = (laid.clone(), laid.clone());
+    let content = rect()
+        .width(Size::fill())
+        .on_sized(move |e: Event<SizedEventData>| l1.content.set(e.area.height()))
+        .child(heading)
+        .maybe_child(lists);
+    match block {
+        Some(b) => rect().height(Size::px(b)).overflow(Overflow::Clip),
+        None => rect(),
+    }
+    .width(Size::fill())
+    .on_sized(move |e: Event<SizedEventData>| l2.block.set(e.area.height()))
+    .child(content)
 }
 
 /// The scrollbar's room: it lies over the rows' right end (the counts).

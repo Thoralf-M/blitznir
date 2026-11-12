@@ -52,7 +52,7 @@ use std::sync::Arc;
 type Test = (&'static str, fn(&LaunchProxy));
 
 /// Every test, run in this order on the one proxy.
-const TESTS: [Test; 77] = [
+const TESTS: [Test; 79] = [
     (
         "a_translation_has_no_retry",
         retry::a_translation_has_no_retry,
@@ -69,6 +69,8 @@ const TESTS: [Test; 77] = [
         "the_edge_over_history_drags_its_share",
         side::the_edge_over_history_drags_its_share,
     ),
+    ("second_list_under_chats", side::second_list_under_chats),
+    ("edge_stays_put", side::edge_stays_put),
     (
         "a_double_click_selects_a_word_a_triple_its_paragraph",
         view::a_double_click_selects_a_word_a_triple_its_paragraph,
