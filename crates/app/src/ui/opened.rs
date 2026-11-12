@@ -259,13 +259,14 @@ impl Component for DictationCard {
             action: h.action.clone(),
             text,
         });
-        // a heading and its text, close together
-        let mut groups: Vec<Vec<Element>> = vec![];
+        // a heading and its text, close together; whether it is the After
+        let mut groups: Vec<(Option<bool>, Vec<Element>)> = vec![];
         let mut base = self.base;
         for part in parts(h) {
             let n = select::pieces(&part.blocks()).len();
             if part.heading || groups.is_empty() {
-                groups.push(vec![]);
+                let side = part.heading.then(|| part.text.contains("After"));
+                groups.push((side, vec![]));
             }
             let body = Body {
                 text: part.text,
@@ -274,13 +275,34 @@ impl Component for DictationCard {
                 muted: part.muted,
             };
             base += n;
-            if let Some(g) = groups.last_mut() {
+            if let Some((_, g)) = groups.last_mut() {
                 g.push(body.into_element());
             }
         }
-        let groups = groups
-            .into_iter()
-            .map(|g| rect().width(Size::fill()).spacing(4.0).children(g).into());
+        let p = use_palette();
+        // Before and After as quotes: a grey bar for what was, the accent
+        // for what replaced it
+        let groups = groups.into_iter().map(|(side, g)| {
+            let bar = |color| {
+                let left = BorderWidth {
+                    top: 0.0,
+                    right: 0.0,
+                    bottom: 0.0,
+                    left: 3.0,
+                };
+                Border::new().fill(color).width(left)
+            };
+            let g = rect().width(Size::fill()).spacing(4.0).children(g);
+            match side {
+                Some(after) => g.padding((2.0, 0.0, 2.0, 12.0)).border(bar(if after {
+                    p.accent
+                } else {
+                    p.line
+                })),
+                None => g,
+            }
+            .into()
+        });
         rect()
             .width(Size::fill())
             .spacing(12.0)

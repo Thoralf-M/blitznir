@@ -85,6 +85,22 @@ impl HistoryItem {
         }
     }
 
+    /// What was asked with nothing selected (a write from scratch, a sum):
+    /// the instruction in its prompt (tasks.rs puts it after `INSTRUCTION:`,
+    /// before any `TEXT:`); None when there was a selection.
+    pub fn asked(&self) -> Option<&str> {
+        if self
+            .original
+            .as_deref()
+            .is_some_and(|o| !o.trim().is_empty())
+        {
+            return None;
+        }
+        let (_, after) = self.prompt.as_deref()?.rsplit_once("INSTRUCTION:\n")?;
+        let asked = after.split("\n\nTEXT:").next()?.trim();
+        (!asked.is_empty()).then_some(asked)
+    }
+
     /// What stands where the answer would be, for a row that has none.
     pub fn unanswered(&self) -> Option<String> {
         match &self.failed {

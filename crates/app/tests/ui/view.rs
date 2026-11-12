@@ -244,6 +244,7 @@ pub fn a_drag_selects_a_replacements_before_and_after(proxy: &LaunchProxy) {
     let app = move || ui::app(p.clone());
     let (mut t, ()) = TestingRunner::new(app, Size2D::new(WINDOW.0, WINDOW.1), |_| {}, 1.0);
     settle(&mut t);
+    shot(&mut t, "before-after-card");
     let (_, from) = paragraph_with(&t, "Hello everyone.").expect("the original");
     let (_, to) = paragraph_with(&t, "Bonjour tout").expect("the result");
     let start = (f64::from(from.min_x()) + 1.0, f64::from(from.center().y));

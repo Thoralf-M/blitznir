@@ -47,8 +47,9 @@ struct Tool {
 #[derive(PartialEq)]
 struct Row {
     lead: Option<&'static [u8]>,
-    /// A replacement's original: struck through above the name.
-    before: Option<String>,
+    /// A replacement's original, struck through above the name; or, with
+    /// nothing selected, what was asked, grey (`struck` false).
+    before: Option<(String, bool)>,
     name: String,
     /// The name in the text colour (a chat) or muted (a dictation).
     strong: bool,
@@ -79,11 +80,13 @@ impl Component for Row {
         let shade = self.on || hover() || keyed;
         let name =
             selectable_line(self.name.clone()).color(if self.strong { p.fg } else { p.muted });
-        let before = self.before.clone().map(|b| {
-            selectable_line(b)
-                .font_size(11.0)
-                .color(p.muted)
-                .text_decoration(TextDecoration::LineThrough)
+        let before = self.before.clone().map(|(b, struck)| {
+            let line = selectable_line(b).font_size(11.0).color(p.muted);
+            if struck {
+                line.text_decoration(TextDecoration::LineThrough)
+            } else {
+                line
+            }
         });
         // the text is selectable: a click on it opens the row, a drag that
         // selects does not
@@ -191,7 +194,10 @@ fn entries(panel: &Arc<Panel>, ui: &Ui, rows: &[(usize, &HistoryItem)]) -> Vec<E
         };
         Row {
             lead: None,
-            before: r.original.as_deref().map(one_line),
+            before: (r.original.as_deref())
+                .filter(|o| !o.is_empty())
+                .map(|o| (one_line(o), true))
+                .or_else(|| r.asked().map(|a| (one_line(a), false))),
             name: words,
             strong: replaced,
             note: short_time(&r.ts),

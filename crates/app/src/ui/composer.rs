@@ -45,7 +45,7 @@ fn keys(panel: Arc<Panel>) -> impl FnMut(Event<KeyboardEventData>) -> bool + 'st
 
 fn placeholder(ui: &Ui) -> String {
     if view::viewing(ui) {
-        return "Ask about this text…".into();
+        return format!("Ask about it: {RET} starts a new chat about this text");
     }
     let name = |i: Option<usize>| i.and_then(|i| ui.actions.get(i)).map(String::as_str);
     if ui.chatting {

@@ -240,15 +240,8 @@ fn chat(
         let top = rect().key(usize::MAX - 1).width(Size::fill()).child(top);
         out.insert(0, top.into());
     }
-    if view::viewing(ui) {
-        out.push(
-            note(
-                p,
-                format!("Ask about it below: {RET} starts a new chat about this text."),
-            )
-            .into(),
-        );
-    } else if ui.messages.is_empty() && ui.streaming.is_none() {
+    // a history row's hint is the composer's placeholder
+    if !view::viewing(ui) && ui.messages.is_empty() && ui.streaming.is_none() {
         let n = ui.selection.as_ref().map_or(0, |s| s.chars().count());
         let hint = if n > 0 {
             format!("Ask anything below. The selected text ({n} characters) goes along as context.")

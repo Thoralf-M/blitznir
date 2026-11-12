@@ -129,3 +129,25 @@ fn a_replacement_keeps_what_made_it_and_old_rows_read_without() {
     let json = std::fs::read_to_string(t.1.history()).unwrap();
     assert_eq!(json.matches("\"prompt\"").count(), 1, "None is not written");
 }
+
+#[test]
+fn an_instruction_with_nothing_selected_is_what_was_asked() {
+    let write = crate::tasks::WRITE_PROMPT.replace("{instruction}", "37+37+14+65");
+    let sum = row("153", "", &Made::new("rewrite", "Rewrite", Some(write)));
+    assert_eq!(sum.asked(), Some("37+37+14+65"));
+    let rewrite = "Fix it.\n\nINSTRUCTION:\nshorter\n\nTEXT:\n{text}".to_string();
+    let empty = row(
+        "x",
+        " ",
+        &Made::new("rewrite", "Rewrite", Some(rewrite.clone())),
+    );
+    assert_eq!(empty.asked(), Some("shorter"), "TEXT: ends the instruction");
+    let on_text = row(
+        "x",
+        "the text",
+        &Made::new("rewrite", "Rewrite", Some(rewrite)),
+    );
+    assert_eq!(on_text.asked(), None, "a selection: its original shows");
+    let no_prompt = row("x", "", &Made::new("write-out", "Write out", None));
+    assert_eq!(no_prompt.asked(), None);
+}
