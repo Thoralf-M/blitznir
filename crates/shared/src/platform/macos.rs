@@ -263,6 +263,10 @@ impl Platform for Mac {
         f.0.and_then(selection_bounds)
     }
 
+    fn selected_text(&self, f: &Focus) -> Option<String> {
+        f.0.and_then(focus::selected_text)
+    }
+
     fn caret(&self, f: &Focus) -> Option<Rect> {
         f.0.and_then(caret::line)
     }

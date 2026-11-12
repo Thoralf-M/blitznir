@@ -228,6 +228,10 @@ impl Platform for Linux {
         None
     }
 
+    fn selected_text(&self, _f: &Focus) -> Option<String> {
+        None
+    }
+
     fn caret(&self, _f: &Focus) -> Option<Rect> {
         None
     }

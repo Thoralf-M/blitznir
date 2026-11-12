@@ -160,6 +160,7 @@ pub fn the_box_shows_either_text_and_the_switch(proxy: &LaunchProxy) {
             (400.0, 132.0),
             "Open in Blitznir",
         ),
+        ("box-pick", BoxKind::Pick, "", (86.0, 32.0), "Translate"),
     ];
     for (name, kind, text, (w, h), button) in cases {
         let panel = panel(proxy, name, &[]);
@@ -169,7 +170,7 @@ pub fn the_box_shows_either_text_and_the_switch(proxy: &LaunchProxy) {
             replaces: match kind {
                 BoxKind::Revert => Some(true),
                 BoxKind::Suggest => Some(false),
-                BoxKind::Translation | BoxKind::Later => None,
+                BoxKind::Translation | BoxKind::Later | BoxKind::Pick => None,
             },
         };
         let view = move || app(panel.clone(), shown.clone());
@@ -180,7 +181,11 @@ pub fn the_box_shows_either_text_and_the_switch(proxy: &LaunchProxy) {
             t.find(|_, e| Label::try_downcast(e).filter(|l| l.text.as_ref() == text))
                 .is_some()
         };
-        assert!(has(&t, button), "{name}: {button}");
+        let at = label_where(&t, |l| l == button).expect("the button");
+        assert!(
+            at.max_x() <= w && at.max_y() <= h,
+            "{name}: {button} in the box"
+        );
         let switch = matches!(kind, BoxKind::Revert | BoxKind::Suggest);
         assert_eq!(
             has(&t, "Next time:"),

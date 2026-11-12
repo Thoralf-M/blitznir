@@ -37,6 +37,66 @@ pub fn a_quick_translation_replaces_the_selection(proxy: &LaunchProxy) {
     );
 }
 
+/// `[translate] on_select`: a mouse selection gets the Translate button,
+/// whose click brings the app back and translates in place; off, or with
+/// nothing selected, no button.
+pub fn a_mouse_selection_offers_translate(proxy: &LaunchProxy) {
+    let wait = || std::thread::sleep(std::time::Duration::from_millis(400));
+    for (name, on, text) in [("pick-off", false, "Hello"), ("pick-none", true, " ")] {
+        let mut fake = FakePlatform::new();
+        fake.mouse = Some((400.0, 400.0));
+        *lock(&fake.selection) = Some(text.into());
+        let platform = Arc::new(fake);
+        let mut cfg = local_config(&answering_endpoint("Hallo"));
+        cfg.translate.on_select = on;
+        let panel = panel_over(proxy, name, &[], platform.clone(), cfg);
+        panel.saw(KeyEvent::Selected);
+        wait();
+        panel.translate_picked(); // a no-op: no button
+        wait();
+        assert!(lock(&platform.refocused).is_empty(), "{name}: no button");
+    }
+    let mut fake = FakePlatform::new();
+    fake.mouse = Some((400.0, 400.0));
+    *lock(&fake.selection) = Some("Hello world".into());
+    let platform = Arc::new(fake);
+    let mut cfg = local_config(&answering_endpoint("Hallo Welt"));
+    cfg.translate.on_select = true;
+    let panel = panel_over(proxy, "pick", &[], platform.clone(), cfg);
+    panel.saw(KeyEvent::Selected);
+    assert!(platform.clipboard().is_empty(), "looked at, not copied");
+    wait_for("the button's translation", || {
+        panel.translate_picked(); // a no-op until the button is up
+        platform.screen() == "Hallo Welt"
+    });
+    assert_eq!(
+        lock(&platform.refocused).len(),
+        1,
+        "the app came back first"
+    );
+    assert!(!panel.ui().shown, "no panel");
+    let no_button = |why: &str| {
+        wait();
+        panel.translate_picked();
+        wait();
+        assert_eq!(lock(&platform.refocused).len(), 1, "{why}: no button");
+    };
+    // the same selection again: a window moved, a scrollbar was dragged
+    panel.saw(KeyEvent::Selected);
+    no_button("nothing newly selected");
+    // typed on before the button could show: it would come too late
+    *lock(&platform.selection) = Some("Good night".into());
+    panel.saw(KeyEvent::Selected);
+    panel.saw(KeyEvent::Other);
+    no_button("a key right after");
+    // only a shown button is remembered: selected again, it shows now
+    panel.saw(KeyEvent::Selected);
+    wait_for("the button for the text the key cut short", || {
+        panel.translate_picked();
+        lock(&platform.refocused).len() == 2
+    });
+}
+
 /// On a page that takes no text the quick translation is shown in the panel.
 pub fn a_quick_translation_on_a_page_shows_the_panel(proxy: &LaunchProxy) {
     let platform = selected("Hello world", Some(false));

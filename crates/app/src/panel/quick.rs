@@ -25,7 +25,10 @@ impl Panel {
         }
     }
 
-    fn quick_now(self: &Arc<Self>, kind: Kind, button: Option<usize>) {
+    pub(super) fn quick_now(self: &Arc<Self>, kind: Kind, button: Option<usize>) {
+        // a box from before (the Translate button) is over the text; a
+        // pressed one made us the active app, and the copy needs the app's
+        self.end_offer(None, true);
         let opened = lock(&self.view).ui.opened;
         // before anything of ours shows: the app in front gets the ⌘C
         let prev = self.platform.focused_app();

@@ -1,10 +1,12 @@
-//! The hotkey listener (and the clicks that end a revert offer): a listen-only CGEventTap on its own CFRunLoop thread.
+//! The hotkey listener (and the clicks that end a revert offer, and the
+//! mouse selections `[translate] on_select` offers a button for): a
+//! listen-only CGEventTap on its own CFRunLoop thread.
 //! Listen-only needs Input Monitoring alone and can never freeze the keyboard.
 
 use super::MARK;
 use blitznir_core::Result;
 use blitznir_core::platform::{Key, KeyEvent};
-use objc2_core_foundation::{CFMachPort, CFRetained, CFRunLoop, kCFRunLoopCommonModes};
+use objc2_core_foundation::{CFMachPort, CFRetained, CFRunLoop, CGPoint, kCFRunLoopCommonModes};
 use objc2_core_graphics::{
     CGEvent, CGEventField, CGEventFlags, CGEventTapLocation, CGEventTapOptions,
     CGEventTapPlacement, CGEventTapProxy, CGEventType, CGPreflightListenEventAccess,
@@ -42,10 +44,30 @@ const SCREENSHOT_KEYS: [i64; 3] = [20, 21, 23];
 /// How often a missing grant or a failed tap is retried.
 const RETRY: Duration = Duration::from_secs(3);
 
+/// A left-button drag at least this long, in points, may have selected
+/// text; a shorter one is a click with a shaky hand.
+const DRAG: f64 = 4.0;
+
 struct Tap {
     /// The installed tap's port; replaced whenever the loop is set up again.
     port: Mutex<Option<CFRetained<CFMachPort>>>,
     tx: Sender<KeyEvent>,
+    /// Where the left button went down, for its up.
+    down: Mutex<Option<CGPoint>>,
+}
+
+/// The left button's down and up: [`KeyEvent::Selected`] on an up that
+/// ends a drag or a double or triple click.
+fn left_button(tap: &Tap, etype: CGEventType, ev: &CGEvent) -> Option<KeyEvent> {
+    let at = CGEvent::location(Some(ev));
+    if etype == CGEventType::LeftMouseDown {
+        *blitznir_core::lock(&tap.down) = Some(at);
+        return None;
+    }
+    let from = blitznir_core::lock(&tap.down).take()?;
+    let clicks = CGEvent::integer_value_field(Some(ev), CGEventField::MouseEventClickState);
+    let dragged = (at.x - from.x).hypot(at.y - from.y) >= DRAG;
+    (dragged || clicks >= 2).then_some(KeyEvent::Selected)
 }
 
 impl Tap {
@@ -103,6 +125,11 @@ unsafe extern "C-unwind" fn callback(
     if CGEvent::integer_value_field(Some(ev), CGEventField::EventSourceUserData) == MARK {
         return event.as_ptr(); // our own typing and shortcuts
     }
+    if (etype == CGEventType::LeftMouseDown || etype == CGEventType::LeftMouseUp)
+        && let Some(msg) = left_button(tap, etype, ev)
+    {
+        let _ = tap.tx.send(msg);
+    }
     if let Some(msg) = translate(etype, ev) {
         let _ = tap.tx.send(msg);
     }
@@ -115,6 +142,7 @@ fn run(tap: &'static Tap) {
         CGEventType::FlagsChanged,
         CGEventType::KeyDown,
         CGEventType::LeftMouseDown,
+        CGEventType::LeftMouseUp,
         CGEventType::RightMouseDown,
     ]
     .iter()
@@ -170,6 +198,7 @@ pub fn spawn(tx: Sender<KeyEvent>) -> Result<()> {
             let tap: &'static Tap = Box::leak(Box::new(Tap {
                 port: Mutex::new(None),
                 tx,
+                down: Mutex::new(None),
             }));
             loop {
                 run(tap);

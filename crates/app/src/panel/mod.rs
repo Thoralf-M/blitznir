@@ -10,6 +10,7 @@ mod dictation;
 pub mod form;
 mod history;
 mod job;
+mod pick;
 mod quick;
 mod revert;
 mod rewrite;
@@ -90,6 +91,8 @@ pub struct Panel {
     stale: AtomicBool,
     /// The revert offer after a dictation's rewrite (revert.rs).
     revert: Mutex<Option<revert::Offer>>,
+    /// The mouse selections' Translate button (pick.rs).
+    pick: Mutex<pick::Seen>,
 }
 
 fn spawn(name: &str, f: impl FnOnce() + Send + 'static) -> std::result::Result<(), String> {
@@ -160,6 +163,7 @@ impl Panel {
             edits: AtomicU64::new(0),
             stale: AtomicBool::new(false),
             revert: Mutex::new(None),
+            pick: Mutex::default(),
         }
     }
 

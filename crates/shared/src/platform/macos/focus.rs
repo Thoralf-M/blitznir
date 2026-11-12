@@ -194,21 +194,29 @@ const WEB: &str = "web page's selection";
 const WEB_WALK: usize = 600;
 
 /// Read-only web text's selection: Chromium and Electron keep it on the
-/// page (an AXWebArea) and name no focused element then. Breadth first
-/// through the window to the first page with selected text.
+/// page (an AXWebArea) and name no focused element then.
 fn web_selection(win: &CFRetained<AXUIElement>) -> Option<Rect> {
+    let (page, _) = web_page(win)?;
+    text_bounds(
+        &page,
+        "AXSelectedTextMarkerRange",
+        "AXBoundsForTextMarkerRange",
+    )
+}
+
+/// Breadth first through the window to the first page with selected text:
+/// the page, and that text.
+fn web_page(win: &CFRetained<AXUIElement>) -> Option<(CFRetained<AXUIElement>, String)> {
     let mut queue = VecDeque::from([win.clone()]);
     for _ in 0..WEB_WALK {
         let el = queue.pop_front()?;
         let role = ax_attr(&el, "AXRole")
             .ok()
             .and_then(|r| r.downcast::<CFString>().ok());
-        if role.is_some_and(|r| r.to_string() == "AXWebArea") && has_selected_text(&el) {
-            return text_bounds(
-                &el,
-                "AXSelectedTextMarkerRange",
-                "AXBoundsForTextMarkerRange",
-            );
+        if role.is_some_and(|r| r.to_string() == "AXWebArea")
+            && let Some(text) = marked_text(&el)
+        {
+            return Some((el, text));
         }
         let kids = ax_attr(&el, "AXChildren")
             .ok()
@@ -222,14 +230,32 @@ fn web_selection(win: &CFRetained<AXUIElement>) -> Option<Rect> {
     None
 }
 
-/// A page's selection holds text, not only a caret.
-fn has_selected_text(page: &AXUIElement) -> bool {
-    let Ok(range) = ax_attr(page, "AXSelectedTextMarkerRange") else {
-        return false;
-    };
-    let text = ax_param(page, "AXStringForTextMarkerRange", &range).ok();
-    text.and_then(|t| t.downcast::<CFString>().ok())
-        .is_some_and(|t| !t.to_string().trim().is_empty())
+/// The text of `el`'s selection in text markers (web text), if not blank.
+fn marked_text(el: &AXUIElement) -> Option<String> {
+    let range = ax_attr(el, "AXSelectedTextMarkerRange").ok()?;
+    let text = ax_param(el, "AXStringForTextMarkerRange", &range).ok()?;
+    text.downcast::<CFString>()
+        .ok()
+        .map(|t| t.to_string())
+        .filter(|t| !t.trim().is_empty())
+}
+
+/// `Platform::selected_text`: in the focused element (a field's
+/// characters, or an editor's web text in markers), else on a web page in
+/// the focused window.
+pub fn selected_text(pid: i32) -> Option<String> {
+    let app = ax_app(pid);
+    if let Ok(el) = focused(&app) {
+        let text = (ax_attr(&el, "AXSelectedText").ok())
+            .and_then(|t| t.downcast::<CFString>().ok())
+            .map(|t| t.to_string())
+            .filter(|t| !t.trim().is_empty());
+        if let Some(text) = text.or_else(|| marked_text(&el)) {
+            return Some(text);
+        }
+    }
+    let win = ax_element(&app, "AXFocusedWindow").ok()?;
+    web_page(&win).map(|(_, text)| text)
 }
 
 /// `Platform::selection_bounds`, and which question the app answered.

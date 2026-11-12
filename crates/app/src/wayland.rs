@@ -185,6 +185,10 @@ impl Platform for Wayland {
         self.inner.selection_bounds(f)
     }
 
+    fn selected_text(&self, f: &Focus) -> Option<String> {
+        self.inner.selected_text(f)
+    }
+
     fn caret(&self, f: &Focus) -> Option<Rect> {
         self.inner.caret(f)
     }

@@ -22,6 +22,11 @@ use std::time::{Duration, Instant};
 
 /// Long enough to read two lines and decide; any key ends it sooner.
 const OFFER: Duration = Duration::from_secs(12);
+/// The Translate button on a mouse selection (panel/pick.rs): it asks for a
+/// glance, not reading, and a selection made to copy should not keep it long.
+const PICK_FOR: Duration = Duration::from_secs(5);
+/// Its box, in points: the button and a margin around it.
+const PICK: (f64, f64) = (86.0, 32.0);
 /// After ⌘⇧4 and the like, clicks are the screenshot's for this long.
 const SHOT: Duration = Duration::from_secs(20);
 /// The box, in points, and its gap to the text.
@@ -71,6 +76,10 @@ pub struct Offer {
     held: bool,
     /// A screenshot began then: its region is dragged out with clicks.
     shot: Option<Instant>,
+    /// The Translate button on a mouse selection (pick.rs).
+    pick: bool,
+    /// Pressed: we became the active app.
+    clicked: bool,
 }
 
 /// Above the text where it fits, else below; without its bounds, above the
@@ -165,17 +174,20 @@ impl Panel {
         // where the effect aims: a field or a window is no place for a box
         // by the text, the mouse in it, which just selected the text, is
         let mouse = self.platform.mouse();
-        let text = sky::aim(lock(&self.view).bounds, mouse).map(|(r, _)| r);
+        let pick = kind == BoxKind::Pick; // the button goes just above the pointer
+        let text = (!pick)
+            .then(|| sky::aim(lock(&self.view).bounds, mouse).map(|(r, _)| r))
+            .flatten();
         let screens = self.on_loop(|ctx| {
             let all = ctx.active_event_loop.available_monitors();
             all.map(|m| crate::zap::screen(&m).1).collect::<Vec<_>>()
         });
-        let (w, h) = size(other);
+        let (w, h) = if pick { PICK } else { size(other) };
         let d = self.cfg().dictation;
         // the switch is the automatic rewrite's: a clicked one always replaces
         let auto = matches!(kind, BoxKind::Revert | BoxKind::Suggest) && d.rewrite_auto;
         let replaces = auto.then_some(d.rewrite_replaces);
-        let size = (w, if auto { h } else { h - SWITCH_ROW });
+        let size = (w, if auto || pick { h } else { h - SWITCH_ROW });
         let Some(frame) = frame(size, text, mouse, &screens.unwrap_or_default()) else {
             return false;
         };
@@ -189,6 +201,8 @@ impl Panel {
             win: None,
             held: false,
             shot: None,
+            pick,
+            clicked: false,
         };
         if let Some(old) = lock(&self.revert).replace(offer) {
             self.close_box(old.win);
@@ -209,8 +223,11 @@ impl Panel {
         }));
         let me = self.me.clone();
         let timer = move || {
-            thread::sleep(OFFER);
-            let held = |me: &Panel| lock(&me.revert).as_ref().is_some_and(|o| o.held);
+            thread::sleep(if pick { PICK_FOR } else { OFFER });
+            // a pressed button may still be held down: its release translates
+            let held = |me: &Panel| {
+                (lock(&me.revert).as_ref()).is_some_and(|o| o.held || o.pick && o.clicked)
+            };
             if let Some(me) = me.upgrade()
                 && !held(&me)
             {
@@ -230,6 +247,9 @@ impl Panel {
         if self.recorded(ev) {
             return; // a Settings hotkey field took it
         }
+        if let Some(me) = self.me.upgrade() {
+            me.heard(ev); // the mouse selections' button (pick.rs)
+        }
         let mut offer = lock(&self.revert);
         let Some(o) = offer.as_mut() else {
             return;
@@ -238,7 +258,9 @@ impl Panel {
             KeyEvent::Other | KeyEvent::FKey(_) => !o.held, // held: typed into the box
             KeyEvent::Click => {
                 let hit = self.platform.mouse().is_some_and(|m| inside(&o.frame, m));
-                o.held |= hit;
+                // nothing in the button's box to read: a press must not pin it
+                (o.held, o.clicked) = (o.held || hit && !o.pick, hit); // outside: another app's
+
                 let shooting = o.shot.is_some_and(|t| t.elapsed() < SHOT);
                 !hit && !shooting
             }
@@ -247,7 +269,7 @@ impl Panel {
                 (o.held, o.shot) = (true, Some(Instant::now()));
                 false
             }
-            KeyEvent::Modifier { .. } | KeyEvent::Reset => false,
+            KeyEvent::Modifier { .. } | KeyEvent::Reset | KeyEvent::Selected => false,
         };
         drop(offer);
         if ends {
@@ -257,15 +279,21 @@ impl Panel {
 
     /// End the offer (`id`: only that one, for its timer); the rewrite stays.
     pub fn end_revert(&self, id: Option<u64>) {
+        self.end_offer(id, false);
+    }
+
+    /// [`Panel::end_revert`]; `now`: a pressed Translate button's app is
+    /// back in front when this returns (else soon after).
+    pub(super) fn end_offer(&self, id: Option<u64>, now: bool) {
         let mut offer = lock(&self.revert);
-        if offer
-            .as_ref()
-            .is_some_and(|o| id.is_none_or(|id| o.id == id))
-        {
-            let win = offer.take().and_then(|o| o.win);
-            drop(offer);
-            self.close_box(win);
+        let Some(o) = offer.take_if(|o| id.is_none_or(|id| o.id == id)) else {
+            return;
+        };
+        drop(offer);
+        if o.pick && o.clicked {
+            self.unpick(o.to, now);
         }
+        self.close_box(o.win);
     }
 
     /// The box's Esc or its x: it may have had the keyboard, which goes back to the app.

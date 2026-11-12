@@ -109,6 +109,7 @@ pub struct Vocabulary {
 pub struct Translate {
     pub home: String,
     pub other: String,
+    pub on_select: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -228,6 +229,7 @@ impl Default for Translate {
         Self {
             home: "German".into(),
             other: "English".into(),
+            on_select: false,
         }
     }
 }

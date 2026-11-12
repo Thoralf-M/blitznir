@@ -104,6 +104,11 @@ pub trait Platform: Send + Sync {
     /// mac: Accessibility, which answers for a background app too, so ask
     /// after the copy. Linux: None (no compositor says where anything is).
     fn selection_bounds(&self, f: &Focus) -> Option<Bounds>;
+    /// `f`'s selected text, None if blank or only a caret, read without ⌘C
+    /// (the clipboard stays): after each mouse selection, for `[translate]
+    /// on_select`, so it never logs. mac: Accessibility; Linux: None (no
+    /// compositor says where a button by the text would go).
+    fn selected_text(&self, f: &Focus) -> Option<String>;
     /// The line `f`'s caret is on, from the line's start to the caret
     /// (`x + w`; `w` 0: the start is unknown), `y` and `h` its line box; None:
     /// no caret, or the app will not say. Asked a few times a second while a

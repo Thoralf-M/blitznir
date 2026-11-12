@@ -77,6 +77,8 @@ pub const SECTIONS: &[Section] = &[
         fields: &[
             f("translate", "home", "Your language", "Text in it becomes the other one", Kind::Text).example("German"),
             f("translate", "other", "Other language", "Anything else becomes your language", Kind::Text).example("English"),
+            f("translate", "on_select", "Button on a mouse selection", "A Translate button above text you select with the mouse", Kind::Bool)
+                .only_on("macos"),
         ],
     },
     Section {

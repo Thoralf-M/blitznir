@@ -112,6 +112,12 @@ impl Platform for FakePlatform {
         self.bounds
     }
 
+    fn selected_text(&self, _f: &Focus) -> Option<String> {
+        lock(&self.selection)
+            .clone()
+            .filter(|s| !s.trim().is_empty())
+    }
+
     fn caret(&self, _f: &Focus) -> Option<Rect> {
         self.caret
     }

@@ -80,6 +80,9 @@ pub enum KeyEvent {
     Other,
     /// A mouse button went down (macOS): only the revert offer cares.
     Click,
+    /// The left button came up after a drag or a double or triple click
+    /// (macOS): text may have just been selected (`[translate] on_select`).
+    Selected,
     /// ⌘⇧3, ⌘⇧4 or ⌘⇧5 (macOS): the system's screenshot, not typing; the
     /// box by the text stays for it.
     Screenshot,
@@ -131,7 +134,7 @@ impl Detector {
                 self.armed = None; // the modifier was used for a chord, not tapped
                 None
             }
-            KeyEvent::Click => None,
+            KeyEvent::Click | KeyEvent::Selected => None,
             KeyEvent::Reset => {
                 // a release lost with the events would make the next press a "repeat"
                 self.down.clear();

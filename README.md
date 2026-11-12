@@ -30,8 +30,8 @@ One native Rust app with a menu-bar icon; its windows are drawn by [Freya](https
   the rewrite; not automatic, it offers **Rewrite** at once. Two ⌘Z undo either.
 - **Rewrite in place**: select text, open the panel, press Return. An empty field cleans up the
   text; an instruction ("shorter", "bullet points") does that. The result replaces the selection.
-- **Translate** between your two languages, in place; **quick translate** on its own hotkey.
-  German and English by default; Settings changes the pair.
+- **Translate** between your two languages (German and English unless set), in place; **quick
+  translate** by hotkey, or by a button over text you select with the mouse (opt-in, macOS).
 - **Buttons** with your own prompts (Summarize, Formal, …), each with an optional hotkey.
 - **Chat** about the selection, with images (paste one, or screenshot a region); **Write out**
   pastes an answer back. Chats are saved and searchable. **Think** (the bulb by the model) lets
@@ -92,7 +92,7 @@ AppIndicator extension, or the tray icon shows nowhere. Typing uses the desktop'
 
 Linux limits: F13–F24 also reach the desktop (keys are never swallowed), so prefer double-taps;
 Translate always pastes back; the effects land mid-screen and there is no dictation wave (Wayland
-says nothing about the caret); the Revert box is macOS only. Apps that share no selection (COSMIC's
+says nothing about the caret); the Revert box and Translate button are macOS only. Apps that share no selection (COSMIC's
 own) are asked to copy with `[linux] copy_keys` (Ctrl+Insert) unless one was just made; a terminal
 with nothing selected then shows "5~" (`copy_keys = ""` turns it off). Used on Ubuntu 26.04, GNOME 50
 (arm64) and Pop!_OS 24.04, COSMIC (x86_64); CI builds and tests on x86_64 Ubuntu; KDE and X11 are

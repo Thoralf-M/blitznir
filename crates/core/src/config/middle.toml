@@ -46,6 +46,10 @@ terms = []
 # Translate: text in `home` becomes `other`; anything else becomes `home`.
 home = "German"
 other = "English"
+# Text selected with the mouse (a drag, a double or triple click) gets a
+# Translate button above the pointer; a click translates as the hotkey does,
+# any key or a click elsewhere closes it (macOS).
+on_select = false
 
 [llm]
 # Let the model reason before a chat answer: only reasoning answered an

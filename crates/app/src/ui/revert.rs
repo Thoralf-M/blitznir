@@ -2,7 +2,8 @@
 //! Revert, or the rewrite and Use rewrite, with the switch between the two
 //! for next time; or a translation of text no app can take back, with Copy
 //! and Open in Blitznir (its chat in the panel); or, with `rewrite_auto`
-//! off, the dictation as typed with Rewrite. A window of its own over the
+//! off, the dictation as typed with Rewrite; or only a Translate button over
+//! text selected with the mouse. A window of its own over the
 //! text, shown without taking the key focus, so typing goes on in the app and
 //! ends the offer; clicked, its text can be selected and copied, and Esc
 //! closes it.
@@ -28,6 +29,9 @@ pub enum BoxKind {
     Translation,
     /// The dictation as typed (`rewrite_auto = false`): Rewrite runs it.
     Later,
+    /// Text selected with the mouse (`[translate] on_select`): only a
+    /// Translate button.
+    Pick,
 }
 
 /// What the box shows.
@@ -60,9 +64,12 @@ pub fn config(panel: Arc<Panel>, shown: Shown, at: Rect) -> WindowConfig {
 }
 
 /// The box's content (pub for the UI tests, which render it headless).
-pub fn app(panel: Arc<Panel>, shown: Shown) -> impl IntoElement {
+pub fn app(panel: Arc<Panel>, shown: Shown) -> Element {
     let theme = use_init_theme(|| style::theme(super::dark()));
     let p = Palette::of(&theme.read());
+    if shown.kind == BoxKind::Pick {
+        return pick(&p, panel); // a window's kind never changes: same hooks each run
+    }
     let replaces = use_state(|| shown.replaces.unwrap_or(true));
     let keys = panel.clone();
     let on_key = move |e: Event<KeyboardEventData>| {
@@ -102,6 +109,7 @@ pub fn app(panel: Arc<Panel>, shown: Shown) -> impl IntoElement {
             BoxKind::Translation => acts.copy_offer(),
             BoxKind::Later => acts.rewrite_offered(),
             BoxKind::Revert | BoxKind::Suggest => acts.revert(),
+            BoxKind::Pick => acts.translate_picked(), // drawn by pick()
         }))
         .maybe_child(open)
         .child(
@@ -133,6 +141,24 @@ pub fn app(panel: Arc<Panel>, shown: Shown) -> impl IntoElement {
         )
         .child(row)
         .maybe_child(switch.then(|| next_time(&p, panel, replaces)))
+        .into_element()
+}
+
+/// The Translate button on a mouse selection: the whole box.
+fn pick(p: &Palette, panel: Arc<Panel>) -> Element {
+    let b = button(p, Look::Plain)
+        .padding((2.0, 12.0))
+        .child(label().text("Translate"));
+    rect()
+        .expanded()
+        .background(p.bg)
+        .color(p.fg)
+        .font_size(12.0)
+        .border(Border::new().fill(p.line).width(1.0))
+        .main_align(Alignment::Center)
+        .cross_align(Alignment::Center)
+        .child(pressable(b, move |_| panel.translate_picked()))
+        .into_element()
 }
 
 /// The box's title, its button and its hint.
@@ -154,6 +180,7 @@ fn texts(kind: BoxKind) -> (&'static str, &'static str, &'static str) {
             "Rewrite",
             "Type on or click away: it stays as said",
         ),
+        BoxKind::Pick => ("", "Translate", ""), // drawn by pick()
     }
 }
 
