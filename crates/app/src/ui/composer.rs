@@ -163,12 +163,18 @@ const LEFT_ICON: f32 = 80.0;
 
 /// When the row is too narrow for everything (a narrow window, or a wide
 /// one with the sidebar open) the Screenshot button keeps only its icon and
-/// tooltip, and narrower still the buttons wrap onto a second row.
+/// tooltip, narrower still the buttons wrap onto a second row, and then
+/// among themselves.
 fn tools(p: &Palette, panel: &Arc<Panel>, ui: &Ui) -> Rect {
     let (cap, img) = (panel.clone(), panel.clone());
     let idle = ui.busy.is_none();
     let mut room = use_state(|| super::window_size().width);
-    let mut wanted = use_state(|| 0.0_f32);
+    // each button's own width: their sum is the group's in one line, however
+    // the group lays them out (its own width, wrapped, is the row's)
+    let widths = use_state(Vec::<f32>::new);
+    let items = buttons(p, panel, ui);
+    let n = items.len();
+    let wanted = || widths.read().iter().take(n).sum::<f32>() + 4.0 * n.saturating_sub(1) as f32;
     let icon_only = room() < wanted() + LEFT_FULL;
     let wrap = room() < wanted() + LEFT_ICON;
     let shot = button_if(p, Look::Tool, idle).padding((4.0, 6.0)).child(
@@ -186,13 +192,27 @@ fn tools(p: &Palette, panel: &Arc<Panel>, ui: &Ui) -> Rect {
     let shot = pressable(shot, move |_| cap.capture());
     let tip = "Capture screen: select a region for your next message (Esc cancels)";
     let paste_tip = format!("Paste an image from the clipboard ({MOD}+V in the text field)");
-    // the buttons' own width, in one line on the tools' row or below it
+    // the buttons in one line on the tools' row, or below it; there they
+    // wrap among themselves too (a narrow composer beside the sidebar: Chat
+    // ran past its edge)
+    let sized = items.into_iter().enumerate().map(|(i, b)| {
+        let mut widths = widths;
+        let note = move |e: Event<SizedEventData>| {
+            let mut all = widths.peek().clone();
+            all.resize(all.len().max(n), 0.0);
+            if all[i] != e.area.width() {
+                all[i] = e.area.width();
+                widths.set(all);
+            }
+        };
+        rect().on_sized(note).child(b).into()
+    });
     let group = rect()
         .horizontal()
         .cross_align(Alignment::Center)
         .spacing(4.0)
-        .on_sized(move |e: Event<SizedEventData>| wanted.set_if_modified(e.area.width()))
-        .children(buttons(p, panel, ui));
+        .maybe(wrap, |g| g.width(Size::fill()).content(Content::wrap()))
+        .children(sized.collect::<Vec<Element>>());
     rect()
         .width(Size::fill())
         .horizontal()

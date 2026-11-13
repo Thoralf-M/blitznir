@@ -89,6 +89,37 @@ pub fn the_composer_tools_never_overlap(proxy: &LaunchProxy) {
             );
         }
     }
+    the_composer_buttons_stay_inside_it(proxy);
+}
+
+/// The composer's last button ends inside the composer however narrow the
+/// sidebar leaves it: with the sidebar open in a narrow panel the buttons
+/// wrapped below the tools and still ran past its right edge.
+fn the_composer_buttons_stay_inside_it(proxy: &LaunchProxy) {
+    for side in [200.0, 300.0, 400.0] {
+        for w in (560..=760).step_by(40) {
+            let panel = panel(proxy, &format!("inside-{w}-{side}"), &[]);
+            panel.set_folded(false);
+            panel.set_side_width(side);
+            let app = move || ui::app(panel.clone());
+            let (mut t, ()) = TestingRunner::new(app, Size2D::new(w as f32, WINDOW.1), |_| {}, 1.0);
+            settle(&mut t);
+            let chat = label_at(&t, "Chat").expect("the Chat button");
+            let runs = format!("{} runs", blitznir_app::panel::view::RET);
+            let (_, hint) = paragraph_with(&t, &runs).expect("the placeholder");
+            // the placeholder fills the field: its right edge is the composer's, inside
+            let inside = chat.max_x() <= hint.max_x() + 4.0;
+            if !inside {
+                shot(&mut t, &format!("inside-{w}-{side}"));
+            }
+            assert!(
+                inside,
+                "at {w} pt, sidebar {side}: Chat ends at {}, the field at {}",
+                chat.max_x(),
+                hint.max_x()
+            );
+        }
+    }
 }
 
 /// The model button's tooltip shows on a hover, and goes once the button
