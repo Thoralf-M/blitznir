@@ -228,17 +228,15 @@ fn an_instruction_on_nothing_writes_from_scratch() {
     assert_eq!(cfg.actions[0].label, "Rewrite");
     let b = rewrite_body(&cfg, "m", " ", button, Some("Schreib eine Geschichte"), &[]);
     let ask = b["messages"][0]["content"].as_str().unwrap();
-    assert_eq!(
-        ask,
-        WRITE_PROMPT.replace("{instruction}", "Schreib eine Geschichte")
-    );
+    let write = |i: &str| WRITE_PROMPT.replace("{instruction}", i);
+    assert_eq!(ask, write("Schreib eine Geschichte"));
     assert_eq!(b["max_tokens"].as_u64(), Some(4096 + 1 + 2048));
     assert_eq!(
         rewrite_prompt(&cfg, " ", "", Some("Do"), false),
-        WRITE_PROMPT.replace("{instruction}", "Do")
+        write("Do")
     );
     let sum = rewrite_body(&cfg, "m", "", "Sum {text}", Some("Do"), &[]);
-    let write_do = WRITE_PROMPT.replace("{instruction}", "Do");
+    let write_do = write("Do");
     assert_eq!(sum["messages"][0]["content"], write_do.as_str());
     let formal = rewrite_body(&cfg, "m", "", "Make it formal.", Some("Do"), &[]);
     assert_eq!(formal["messages"][0]["content"], write_do.as_str());
@@ -270,6 +268,12 @@ fn the_vocabulary_spellings_precede_every_rewrite() {
         .insert("o m l x".into(), "oMLX".into());
     let line = "Keep these spellings exactly: PostgreSQL, oMLX.\n\n";
     assert_eq!(asked(&cfg, "Sum {text}"), format!("{line}Sum o m l x"));
+    // writing from scratch: no line, the list alone was the answer
+    let write = rewrite_prompt(&cfg, "", "", Some("write a story"), false);
+    assert_eq!(
+        write,
+        WRITE_PROMPT.replace("{instruction}", "write a story")
+    );
 }
 
 #[test]

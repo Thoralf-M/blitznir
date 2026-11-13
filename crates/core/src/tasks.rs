@@ -126,7 +126,7 @@ every other line, comment and the order as they are. Use only keys and values \
 that the DEFAULT FILE documents in its comments; never invent a key.
 Output ONLY the complete new file as plain TOML: no code fences, no commentary.";
 
-/// Before a clean-up or an instruction, when [vocabulary] lists any.
+/// Before a clean-up or an instruction on text, when [vocabulary] lists any.
 const SPELLINGS: &str = "Keep these spellings exactly: {list}.";
 
 /// Fill `{name}` placeholders by plain replacement, in order (a user's prompt
@@ -195,10 +195,12 @@ fn rewrite_ask(
     // needs more room than an edit.
     let on_text = own.contains("{text}") || !own.contains("{instruction}");
     if let (true, Some(i)) = (on_text && text.trim().is_empty(), instruction) {
-        return (
-            keep_spellings(cfg, WRITE_PROMPT.replace("{instruction}", i)),
-            4096,
-        );
+        // no [`SPELLINGS`] line: with nothing to apply it to, the list was
+        // the answer ("write a story" got "Blitznir" 12 of 12; as a condition
+        // below the frame still 6 of 9 for a note on the app, and the name in
+        // 3 of 13 stories). Without it 0 of 24; a dictated instruction already
+        // has [vocabulary] applied, so "blitz near" arrives as "Blitznir".
+        return (WRITE_PROMPT.replace("{instruction}", i), 4096);
     }
     let mut p = if own.is_empty() { REWRITE_PROMPT } else { own }.to_string();
     if instruction.is_some() && !p.contains("{instruction}") {

@@ -36,7 +36,7 @@ rewrite_in_panel = false
 [vocabulary]
 # Spoken → written, applied to every transcript before it is typed (whole
 # words, case-insensitive). The written forms are also given to the clean-up
-# and instruction prompts so the model keeps their spelling.
+# and to instructions on selected text so the model keeps their spelling.
 # Example: replace = { "o m l x" = "oMLX", "blitz near" = "Blitznir" }
 replace = {}
 # Extra terms to keep as written (names, products) when nothing is replaced.
