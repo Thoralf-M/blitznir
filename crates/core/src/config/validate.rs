@@ -41,6 +41,7 @@ impl Config {
         crate::tasks::hide_regex(&self.llm.vision_models)
             .map_err(|e| format!("llm.vision_models: {e}"))?;
         actions::validate(&self.actions)?;
+        self.wake.validate()?;
         crate::vocab::Vocab::new(&self.vocabulary)?;
         let mut names = HashSet::new();
         for e in &self.endpoints {

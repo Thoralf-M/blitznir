@@ -258,8 +258,8 @@ pub fn settings_scroll_from_the_side_and_the_margins(proxy: &LaunchProxy) {
     t.scroll((100.0, 250.0), (0.0, -50.0)); // too soon after the turn: dropped
     settle(&mut t);
     assert!(
-        paragraph_with(&t, "Keep as written").is_some(),
-        "one page on: Vocabulary"
+        paragraph_with(&t, "Wake phrase").is_some(),
+        "one page on: Hands-free"
     );
     std::thread::sleep(std::time::Duration::from_millis(200));
     t.scroll((100.0, 250.0), (0.0, 50.0)); // and up
@@ -271,9 +271,9 @@ pub fn settings_scroll_from_the_side_and_the_margins(proxy: &LaunchProxy) {
         std::thread::sleep(std::time::Duration::from_millis(30));
     }
     settle(&mut t);
-    let on = paragraph_with(&t, "Speech model").is_none()
-        && paragraph_with(&t, "Keep as written").is_none();
-    assert!(on, "past Vocabulary: more than one page");
+    let on =
+        paragraph_with(&t, "Speech model").is_none() && paragraph_with(&t, "Wake phrase").is_none();
+    assert!(on, "past Hands-free: more than one page");
     // a window too short for the list: the wheel scrolls it to About
     let short = panel.clone();
     let app = move || ui::app(short.clone());

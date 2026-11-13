@@ -39,6 +39,7 @@ const KEY_V: u16 = 9;
 /// Where US keyboards have Z; [`layout_key`] finds it on the one in use.
 const KEY_Z: u16 = 6;
 const KEY_DELETE: u16 = 51;
+const KEY_RETURN: u16 = 36;
 const KEY_LEFT_CMD: u16 = 55;
 /// NX_DEVICELCMDKEYMASK: a real ⌘ press sets it next to the generic flag.
 const DEVICE_LEFT_CMD: u64 = 0x08;
@@ -275,6 +276,10 @@ impl Platform for Mac {
         f.0.and_then(caret::line)
     }
 
+    fn text_before_caret(&self, f: &Focus) -> Option<String> {
+        f.0.and_then(caret::text_before)
+    }
+
     /// A null event's location: global points from the main screen's top left.
     fn mouse(&self) -> Option<(f64, f64)> {
         CGEvent::new(None)
@@ -339,6 +344,15 @@ impl Platform for Mac {
 
     fn undo(&self, f: &Focus) -> Result<bool> {
         cmd_into(f, || layout_key('z', KEY_Z))
+    }
+
+    fn send(&self, f: &Focus) -> Result<bool> {
+        if !front(f) {
+            return Ok(false);
+        }
+        wait_released(Duration::from_secs(2));
+        key_press(KEY_RETURN);
+        Ok(true)
     }
 
     fn show_quietly(&self) {

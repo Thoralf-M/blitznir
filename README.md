@@ -25,6 +25,8 @@ One native Rust app with a menu-bar icon; its windows are drawn by [Freya](https
 ## Features
 
 - **Live dictation** types while you speak; **batch dictation** types it all when you stop.
+  **Hands-free** (opt-in, mic open): "hey blitz" starts one, "blitz stop" or a pause ends it;
+  said alone, "blitz send" presses Return, "blitz delete" takes back the sentence before the cursor.
 - **Rewrite every dictation** (optional prompt): the rewrite replaces what you said, and a box by
   the text offers your words back (**Revert**); in **Suggest** mode your words stay and it offers
   the rewrite; not automatic, it offers **Rewrite** at once. Two ⌘Z undo either.
@@ -39,10 +41,8 @@ One native Rust app with a menu-bar icon; its windows are drawn by [Freya](https
   above the answer. One that loops or thinks past the token ceiling is answered without it.
   A cancelled or failed question stays in its chat, marked, with a Send again; Retry asks for a
   new last answer. Images open large as attached (Fit, 1:1, wheel zoom, drag) and copy.
-- **Vocabulary**: spoken forms become written ones ("o m l x" → oMLX), and spellings are kept.
-- **History** of dictations and replacements; **Undo last replace**.
-- **Effects** while it works: a beam of light (or lightning) onto the text, a soft wave under
-  the line you dictate into, and one where a chat answer will appear. Sound is off by default.
+- **Vocabulary** ("o m l x" → oMLX, spellings kept); **History**; **Undo last replace**.
+- **Effects**: a beam (or lightning) onto the text, waves under dictation and coming answers.
 - **Settings** as a searchable form that saves itself, or as the raw `config.toml`, which
   documents itself. Hotkeys are recorded by pressing them. **Check for updates** in About asks
   GitHub only when you press it.
@@ -92,11 +92,11 @@ AppIndicator extension, or the tray icon shows nowhere. Typing uses the desktop'
 
 Linux limits: F13–F24 also reach the desktop (keys are never swallowed), so prefer double-taps;
 Translate always pastes back; the effects land mid-screen and there is no dictation wave (Wayland
-says nothing about the caret); the Revert box and Translate button are macOS only. Apps that share no selection (COSMIC's
-own) are asked to copy with `[linux] copy_keys` (Ctrl+Insert) unless one was just made; a terminal
-with nothing selected then shows "5~" (`copy_keys = ""` turns it off). Used on Ubuntu 26.04, GNOME 50
-(arm64) and Pop!_OS 24.04, COSMIC (x86_64); CI builds and tests on x86_64 Ubuntu; KDE and X11 are
-untested.
+says nothing about the caret, so "blitz delete" takes back only what it typed); the Revert box and
+Translate button are macOS only. Apps that share no selection (COSMIC's own) are asked to copy with
+`[linux] copy_keys` (Ctrl+Insert) unless one was just made; a terminal with nothing selected then
+shows "5~" (`copy_keys = ""` turns it off). Used on Ubuntu 26.04, GNOME 50 (arm64) and Pop!_OS
+24.04, COSMIC (x86_64); CI builds and tests on x86_64 Ubuntu; KDE and X11 are untested.
 
 ## Configuration and data
 

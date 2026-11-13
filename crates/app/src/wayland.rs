@@ -205,6 +205,10 @@ impl Platform for Wayland {
         self.inner.caret(f)
     }
 
+    fn text_before_caret(&self, f: &Focus) -> Option<String> {
+        self.inner.text_before_caret(f)
+    }
+
     fn mouse(&self) -> Option<(f64, f64)> {
         self.inner.mouse()
     }
@@ -219,6 +223,10 @@ impl Platform for Wayland {
 
     fn undo(&self, f: &Focus) -> Result<bool> {
         self.inner.undo(f)
+    }
+
+    fn send(&self, f: &Focus) -> Result<bool> {
+        self.inner.send(f)
     }
 
     fn show_quietly(&self) {

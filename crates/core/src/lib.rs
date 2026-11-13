@@ -19,6 +19,7 @@ pub mod store;
 pub mod tasks;
 pub mod textproc;
 pub mod vocab;
+pub mod wake;
 pub mod wave;
 pub mod zoom;
 

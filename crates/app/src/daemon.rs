@@ -9,6 +9,7 @@ use crate::{
 };
 use blitznir::{
     audio::Source,
+    hands::Hands,
     logging, platform,
     session::{Dictator, Note},
     stt,
@@ -115,8 +116,19 @@ pub fn run() -> Result<()> {
     let platform = shell_platform(platform::current(), &proxy);
     let tray = Tray::new(platform.clone(), proxy.clone());
     let caret = Caret::new(platform.clone(), proxy.clone(), cfg.panel.dictation_effect);
-    let own = Arc::new(OnceLock::new());
-    let dictator = dictator(&platform, &store, &cfg, &tray, &caret, &own);
+    let (own, ears) = (Arc::new(OnceLock::new()), Arc::new(OnceLock::new()));
+    let dictator = dictator(&platform, &store, &cfg, &tray, &caret, (&own, &ears));
+    let t = tray.clone();
+    let flash = move |msg| t.flash(msg);
+    let hands = Hands::start(
+        &paths,
+        &cfg,
+        platform.clone(),
+        dictator.clone(),
+        Source::Mic,
+        flash,
+    )?;
+    let _ = ears.set(hands.clone());
     if broken_config {
         tray.flash("config.toml is broken: see blitznir.log");
     }
@@ -129,7 +141,7 @@ pub fn run() -> Result<()> {
         tray: tray.clone(),
         proxy,
     };
-    let panel = Panel::new(parts, hooks(&tray, &dictator, &caret, reload))?;
+    let panel = Panel::new(parts, hooks(&tray, &dictator, &caret, (reload, hands)))?;
     let _ = own.set(Arc::downgrade(&panel));
     tray.set_panel(&panel);
     hotkeys(&platform, &cfg, dictator.clone(), panel.clone(), reloads);
@@ -160,33 +172,42 @@ pub fn run() -> Result<()> {
     Ok(())
 }
 
+/// Made after the dictator, which tells it of each dictation.
+type Later<T> = Arc<OnceLock<T>>;
+
 /// The dictation, its phases shown in the tray and by the caret's wave, and
 /// the panel's (`own`, set once the panel exists: it is made after the
-/// dictator) for a dictation into its composer.
+/// dictator) for a dictation into its composer; hands-free (`ears`, made
+/// after it too) hears when one starts and ends.
 fn dictator(
     platform: &Arc<dyn Platform>,
     store: &Arc<Store>,
     cfg: &Config,
     tray: &Arc<Tray>,
     caret: &Arc<Caret>,
-    own: &Arc<OnceLock<Weak<Panel>>>,
+    (own, ears): (&Later<Weak<Panel>>, &Later<Arc<Hands>>),
 ) -> Arc<Dictator> {
-    let (t, c, own) = (tray.clone(), caret.clone(), own.clone());
+    let (t, c, own, ears) = (tray.clone(), caret.clone(), own.clone(), ears.clone());
     Dictator::new(
         platform.clone(),
         store.clone(),
         cfg.clone(),
         Source::Mic,
-        move |note| match note {
-            Note::Phase(phase) => {
-                t.set_phase(phase);
-                c.phase(phase);
-                if let Some(panel) = own.get().and_then(Weak::upgrade) {
-                    panel.set_dictating(matches!(phase, Phase::Live | Phase::Batch));
-                }
+        move |note| {
+            if let Some(hands) = ears.get() {
+                hands.note(&note);
             }
-            Note::Flash(msg) => t.flash(msg),
-            Note::Dictated(text, shown) => t.dictated(text, shown),
+            match note {
+                Note::Phase(phase) => {
+                    t.set_phase(phase);
+                    c.phase(phase);
+                    if let Some(panel) = own.get().and_then(Weak::upgrade) {
+                        panel.set_dictating(matches!(phase, Phase::Live | Phase::Batch));
+                    }
+                }
+                Note::Flash(msg) => t.flash(msg),
+                Note::Dictated(text, shown) => t.dictated(text, shown),
+            }
         },
     )
 }
@@ -203,12 +224,12 @@ fn shell_platform(shared: Arc<dyn Platform>, _proxy: &LaunchProxy) -> Arc<dyn Pl
 }
 
 /// The panel shows a job in the tray; a saved config.toml reaches the
-/// dictation and the hotkeys.
+/// dictation, the hotkeys and hands-free.
 fn hooks(
     tray: &Arc<Tray>,
     dictator: &Arc<Dictator>,
     caret: &Arc<Caret>,
-    reload: mpsc::Sender<Config>,
+    (reload, hands): (mpsc::Sender<Config>, Arc<Hands>),
 ) -> Hooks {
     let (t, d) = (tray.clone(), dictator.clone());
     let busy = move |title: Option<&'static str>| match title {
@@ -222,6 +243,7 @@ fn hooks(
             d.set_config(cfg.clone());
             c.set_on(cfg.panel.dictation_effect);
             let _ = reload.send(cfg.clone()); // fails only when hotkeys never started
+            hands.configure(cfg);
         }),
     }
 }

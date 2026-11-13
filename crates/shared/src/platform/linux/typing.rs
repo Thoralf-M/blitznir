@@ -210,6 +210,11 @@ impl Keyboard {
         let Chord { mods, key } = self.keys.undo.clone();
         self.chord(&mods, key)
     }
+
+    /// Return: `[wake] send`.
+    pub fn enter(&mut self) -> std::io::Result<()> {
+        self.chord(&[], KeyCode::KEY_ENTER)
+    }
 }
 
 #[cfg(test)]

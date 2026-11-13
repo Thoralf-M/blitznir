@@ -16,6 +16,7 @@ use crate::{
 };
 use std::{
     sync::{
+        Arc, Mutex,
         atomic::{AtomicBool, Ordering},
         mpsc::{Receiver, RecvTimeoutError},
     },
@@ -39,6 +40,26 @@ pub struct Opts {
     pub stale_after: Duration,
     /// `[vocabulary]`: applied to everything typed or kept.
     pub vocab: Vocab,
+    /// `[wake] stop` once the spotter heard it end this dictation: said
+    /// last, it was typed with the text and is taken off; "" otherwise (a
+    /// text that only ends in words like it keeps them: "well done"). True:
+    /// a command said at its end, cut even where the final pass wrote it
+    /// otherwise.
+    pub stop: Arc<Mutex<(String, bool)>>,
+    /// `[wake] stop`, for a dictation the wake phrase started: said last
+    /// all but exactly, it comes off even when a pause ended it first (the
+    /// live text had not caught up with it).
+    pub tail: String,
+    /// `[wake] wake`, for a dictation the wake phrase started: its end, heard
+    /// first, is taken off the text; "" otherwise.
+    pub head: String,
+    /// The live text as heard (the wake phrase's end off): hands-free reads
+    /// the stop phrase from it, which the transcript gets right more often
+    /// than its keyword spotter.
+    pub text: Arc<Mutex<String>>,
+    /// When the live text last gained a word: hands-free ends a dictation
+    /// once none came for a while (music never counts as a pause by loudness).
+    pub words: Arc<Mutex<Option<Instant>>>,
 }
 
 /// Live corrections are at most this many characters of backspace.
@@ -87,6 +108,11 @@ impl Opts {
             stale_after: Duration::from_secs(2),
             // valid: Config::parse compiled it already
             vocab: Vocab::new(&cfg.vocabulary).unwrap_or_default(),
+            stop: Arc::default(),
+            head: String::new(),
+            tail: String::new(),
+            text: Arc::default(),
+            words: Arc::default(),
         }
     }
 }
@@ -157,6 +183,7 @@ pub fn run(
         typer: Typer::default(),
         heard: String::new(),
         typing_live: opts.live,
+        words: 0,
     };
     match s
         .listen(audio, stop, rec)
@@ -182,10 +209,54 @@ struct Session<'a> {
     heard: String,
     /// Live and no typing error yet; after one, the final pass types the rest.
     typing_live: bool,
+    /// The most words the live text has had.
+    words: usize,
 }
 
 impl Session<'_> {
+    /// `heard` without the wake phrase's end it may start with, and with
+    /// what a take-back phrase takes back.
+    /// `stop`, said to end it, off `text`; when the final pass wrote a
+    /// phrase that starts with the wake phrase's word ("blitz") otherwise,
+    /// from that word on.
+    fn strip(&self, text: &str, stop: &str, command: bool) -> String {
+        let cut = crate::wake::strip_tail(text, stop);
+        // the configured phrase's word, not the transcript's extra ("hey please")
+        let phrase = crate::wake::alternatives(&self.opts.head)
+            .next()
+            .unwrap_or_default();
+        let word = phrase.split_whitespace().last().unwrap_or_default();
+        let ours = |p: &str| {
+            p.split_whitespace()
+                .next()
+                .is_some_and(|h| h.eq_ignore_ascii_case(word))
+        };
+        // a command only: the spotter's stop in "the Blitz stopped London" is talk
+        match command
+            && cut == text
+            && !word.is_empty()
+            && crate::wake::alternatives(stop).any(ours)
+        {
+            true => crate::wake::strip_from(text, word),
+            false => cut,
+        }
+    }
+
+    fn unhead(&self, heard: &str) -> String {
+        match self.opts.head.is_empty() {
+            true => heard.to_string(),
+            false => crate::wake::strip_head(heard, &self.opts.head),
+        }
+    }
+
     fn offer(&mut self, heard: &str) {
+        let heard = &self.unhead(heard);
+        crate::lock(&self.opts.text).clone_from(heard);
+        let n = heard.split_whitespace().count();
+        if n > self.words {
+            self.words = n;
+            *crate::lock(&self.opts.words) = Some(Instant::now());
+        }
         let target = self.opts.vocab.apply(heard);
         let typed = self
             .typer
@@ -250,6 +321,7 @@ impl Session<'_> {
     }
 
     fn finish(&mut self, heard: String) -> String {
+        let heard = self.unhead(&heard);
         // The final pass corrects content; it never takes words away. If the
         // last decode (often mostly trailing silence) came back shorter than
         // what is on screen, the typed words stay, and the history gets them.
@@ -262,6 +334,17 @@ impl Session<'_> {
             self.typer.typed.trim_end().to_string()
         } else {
             self.opts.vocab.apply(&heard).into_owned()
+        };
+        // a stop phrase said to end it was typed with it: the final pass takes it back
+        let (stop, command) = crate::lock(&self.opts.stop).clone();
+        let text = match stop.is_empty() {
+            true => text,
+            false => self.strip(&text, &stop, command),
+        };
+        let tail = &self.opts.tail;
+        let text = match !tail.is_empty() && crate::wake::said_last(&text, tail) {
+            true => crate::wake::strip_tail(&text, tail),
+            false => text,
         };
         self.keep(&text);
         if self.opts.auto_copy

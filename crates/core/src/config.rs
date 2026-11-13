@@ -3,17 +3,20 @@
 //! a file that does not parse is refused and nothing is written.
 
 mod actions;
+mod capture;
 pub mod form;
 mod linux;
 mod paths;
 mod rewrite;
 mod validate;
+mod wake;
 
 use crate::{
     Error, Result,
     keys::{Action, Key},
 };
 pub use actions::{Button, Prompts};
+pub use capture::Capture;
 pub use linux::Linux;
 pub use paths::{DATA_DIR_NAME, Paths};
 use serde::Deserialize;
@@ -21,6 +24,7 @@ use std::{
     collections::{BTreeMap, HashMap},
     path::Path,
 };
+pub use wake::Wake;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -48,6 +52,8 @@ pub struct Config {
     pub panel: Panel,
     #[serde(default)]
     pub linux: Linux,
+    #[serde(default)]
+    pub wake: Wake,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -137,12 +143,6 @@ pub struct Endpoint {
     /// Whether its models accept images; None = the server and `vision_models` say.
     #[serde(default)]
     pub vision: Option<bool>,
-}
-
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(deny_unknown_fields, default)]
-pub struct Capture {
-    pub cmd: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -246,17 +246,6 @@ impl Default for Llm {
             hide_models: HIDE_MODELS.into(),
             vision_models: VISION_MODELS.into(),
         }
-    }
-}
-
-impl Default for Capture {
-    fn default() -> Self {
-        let cmd = if cfg!(target_os = "macos") {
-            "screencapture -i -o -x {path}"
-        } else {
-            "" // the desktop's screenshot portal: GNOME 50 refuses gnome-screenshot
-        };
-        Self { cmd: cmd.into() }
     }
 }
 

@@ -6,9 +6,11 @@
 
 pub mod audio;
 pub mod cli;
+pub mod hands;
 pub mod logging;
 #[allow(unsafe_code)]
 pub mod platform;
 pub mod session;
 pub mod speaker;
 pub mod stt;
+pub mod wake;

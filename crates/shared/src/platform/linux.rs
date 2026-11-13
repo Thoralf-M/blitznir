@@ -236,6 +236,10 @@ impl Platform for Linux {
         None
     }
 
+    fn text_before_caret(&self, _f: &Focus) -> Option<String> {
+        None
+    }
+
     fn caret(&self, _f: &Focus) -> Option<Rect> {
         None
     }
@@ -333,6 +337,11 @@ impl Platform for Linux {
     /// No window can be brought back on Wayland: to whatever has the focus.
     fn undo(&self, _f: &Focus) -> Result<bool> {
         self.shortcut(Keyboard::undo)
+    }
+
+    /// As `undo`: Return where the focus is.
+    fn send(&self, _f: &Focus) -> Result<bool> {
+        self.shortcut(Keyboard::enter)
     }
 
     /// `[capture] cmd = ""` (the Linux default): the desktop's screenshot portal.

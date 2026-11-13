@@ -13,7 +13,7 @@ use std::{
     sync::{
         Arc,
         atomic::{AtomicBool, Ordering},
-        mpsc::{self, RecvTimeoutError, Sender},
+        mpsc::{self, Receiver, RecvTimeoutError, Sender},
     },
     thread::{self, JoinHandle},
     time::{Duration, Instant},
@@ -168,6 +168,38 @@ fn mic(tx: Sender<Vec<f32>>, stop: Arc<AtomicBool>) -> Result<Recorder> {
             ))
         }
     }
+}
+
+/// Frames from `feed` instead of a microphone: hands-free's ear (wake.rs)
+/// hands its own on from the wake phrase, so nothing said while the
+/// dictation starts (and the phrase is checked) is lost.
+pub fn forward(
+    feed: Receiver<Vec<f32>>,
+    tx: Sender<Vec<f32>>,
+    stop: Arc<AtomicBool>,
+) -> Result<Recorder> {
+    let run = move || {
+        let mut stats = Stats {
+            device: "the hands-free listener".into(),
+            ..Stats::default()
+        };
+        while !stop.load(Ordering::Acquire) {
+            match feed.recv_timeout(Duration::from_millis(20)) {
+                Ok(block) => {
+                    stats.add(&block);
+                    if tx.send(block).is_err() {
+                        break;
+                    }
+                }
+                Err(RecvTimeoutError::Timeout) => {}
+                Err(RecvTimeoutError::Disconnected) => break,
+            }
+        }
+        stats
+    };
+    Ok(Recorder(
+        thread::Builder::new().name("feed".into()).spawn(run)?,
+    ))
 }
 
 fn audio_err(e: impl std::fmt::Display) -> Error {

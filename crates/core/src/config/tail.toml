@@ -8,6 +8,22 @@ rain = false               # rain with the lightning's thunder
 dictation_effect = true    # a wave of light under the line you dictate into (macOS)
 thinking_effect = true     # a wave of light in a chat answer's place until its first word
 
+[wake]
+# Hands-free dictation: say `wake` and a live dictation starts; `stop`, or
+# `quiet_s` seconds without speech, ends it. Then `send`, said on its own
+# within `send_within_s` seconds, presses Return in the app it went to.
+# Phrases of two English-sounding words are heard best; commas separate
+# alternatives ("blitz send, blitz sent"); "" turns stop or send off. Send
+# and scratch count said on their own, a short pause before and after. While
+# this is on the microphone stays open (a small listener, about 1 % of a core).
+enabled = false
+wake = "hey blitz"
+stop = "blitz stop"
+send = "blitz send"
+scratch = "blitz scratch, blitz delete"   # takes the last sentence back
+quiet_s = 5.0
+send_within_s = 120.0
+
 [linux]
 xkb_layout = ""            # typing's layout; "" = the desktop's (Wayland), or "de", "us", …
 paste_keys = "ctrl+v"      # sent to paste back (terminals want ctrl+shift+v)

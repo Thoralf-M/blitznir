@@ -2,6 +2,7 @@
 
 use crate::{
     audio::{self, Source},
+    hands::Hands,
     platform,
     session::{Dictator, Note},
     stt,
@@ -10,7 +11,7 @@ use blitznir_core::{
     Error, Result,
     config::{Config, Paths, SttModel},
     dictation::Phase,
-    platform::Recognizer,
+    platform::{Recognizer, fake::FakePlatform},
     segmenter::{SAMPLE_RATE, SegConfig, Segmenter},
     store::Store,
     vocab::Vocab,
@@ -31,6 +32,11 @@ const USAGE: &str = "usage: blitznir            the tray app (hotkeys, dictation
          the hotkey's dictation, started and stopped from here: after a
          3 s countdown it types into the focused app. --wav replays a
          16 kHz file in real time instead of the microphone.
+       blitznir listen [--seconds N] [--wav FILE]
+         hands-free, typing nothing: listens N s (default 60) for [wake]'s
+         phrases, on whatever `enabled` says, dictates into a text kept in
+         memory, and prints what it would have typed and each Return;
+         --wav hears a recording instead of the microphone.
        blitznir --help     this text
 
 Every command but --help writes the default config.toml if there is none;
@@ -52,6 +58,7 @@ pub fn run(args: &[String]) -> Result<()> {
         Some("--check") if args.len() == 1 => check(),
         Some("transcribe") => transcribe(&args[1..]),
         Some("dictate") => dictate(&args[1..]),
+        Some("listen") => listen(&args[1..]),
         _ => Err(usage()),
     }
 }
@@ -249,6 +256,64 @@ fn dictate(args: &[String]) -> Result<()> {
         "the session did not end ({:?})",
         d.phase()
     )))
+}
+
+/// Hands-free on a fake screen: the real microphone, ear and model, a
+/// throwaway history.
+fn listen(args: &[String]) -> Result<()> {
+    let (mut seconds, mut source) = (60.0_f32, Source::Mic);
+    let mut it = args.iter();
+    while let Some(flag) = it.next() {
+        match (flag.as_str(), it.next()) {
+            ("--seconds", Some(n)) => seconds = n.parse().map_err(|_| usage())?,
+            // a recording instead of the microphone, in real time, then quiet
+            ("--wav", Some(file)) => {
+                source = Source::Wav(Arc::new(audio::read_wav(Path::new(file))?))
+            }
+            _ => return Err(usage()),
+        }
+    }
+    let paths = Paths::user()?;
+    let mut cfg = Config::load(&paths)?;
+    cfg.wake.enabled = true;
+    let rec = load(&paths, cfg.dictation.model)?;
+    let tmp = std::env::temp_dir().join(format!("blitznir-listen-{}", std::process::id()));
+    let store = Arc::new(Store::new(Paths::new(&tmp), cfg.dictation.history_max)?);
+    let screen = Arc::new(FakePlatform::new());
+    let (tx, notes) = mpsc::channel();
+    let send = move |n| drop(tx.send(n));
+    let d = Dictator::new(screen.clone(), store, cfg.clone(), Source::Mic, send);
+    d.ready(Box::new(rec));
+    let hands = Hands::start(&paths, &cfg, screen.clone(), d, source, |m| {
+        log::info!("flash: {m}")
+    })?;
+    let t0 = Instant::now();
+    let at = || t0.elapsed().as_secs_f32();
+    out(&format!("listening {seconds} s for {:?}", cfg.wake.wake))?;
+    let (end, mut sent) = (t0 + Duration::from_secs_f32(seconds), 0);
+    while Instant::now() < end {
+        match notes.recv_timeout(Duration::from_millis(200)) {
+            Ok(n) => {
+                hands.note(&n);
+                match n {
+                    Note::Phase(p) => out(&format!("{:7.1}s  {p:?}", at()))?,
+                    Note::Dictated(text, _) => out(&format!("{:7.1}s  dictated: {text:?}", at()))?,
+                    Note::Flash(_) => {}
+                }
+            }
+            Err(mpsc::RecvTimeoutError::Timeout) => {}
+            Err(mpsc::RecvTimeoutError::Disconnected) => break,
+        }
+        let now = blitznir_core::lock(&screen.sent_in).len();
+        if now > sent {
+            (sent, _) = (now, out(&format!("{:7.1}s  Return pressed", at()))?);
+        }
+    }
+    let _ = std::fs::remove_dir_all(&tmp);
+    out(&format!(
+        "screen: {:?}; Return pressed {sent} times",
+        screen.screen()
+    ))
 }
 
 #[cfg(test)]

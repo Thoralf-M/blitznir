@@ -80,7 +80,12 @@ pub fn ensure_model(dir: &Path, m: SttModel, progress: &mut dyn FnMut(u64)) -> R
 
 /// To `dest.part`, then renamed once the size is right: a broken download
 /// never looks like a model. `got_bytes` hears every block's byte count.
-fn download(url: &str, dest: &Path, size: u64, got_bytes: &mut dyn FnMut(u64)) -> Result<()> {
+pub(crate) fn download(
+    url: &str,
+    dest: &Path,
+    size: u64,
+    got_bytes: &mut dyn FnMut(u64),
+) -> Result<()> {
     log::info!("downloading {url} ({} MB)", size / 1_000_000);
     let mut part = dest.as_os_str().to_owned();
     part.push(".part");

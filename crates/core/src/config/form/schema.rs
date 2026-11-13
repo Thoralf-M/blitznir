@@ -62,6 +62,19 @@ pub const SECTIONS: &[Section] = &[
         ],
     },
     Section {
+        title: "Hands-free",
+        about: "Dictate without a key: a phrase starts it, another ends it, a third sends it. The microphone stays open while this is on.",
+        fields: &[
+            f("wake", "enabled", "Listen for the wake phrase", "Keeps the microphone open for a small listener (about 1 % of a core)", Kind::Bool),
+            f("wake", "wake", "Wake phrase", "Starts a live dictation. Two English-sounding words are heard best", Kind::Text).example("hey blitz"),
+            f("wake", "stop", "Stop phrase", "Ends it and is taken off the text; empty: only a pause ends it", Kind::Text).example("blitz stop"),
+            f("wake", "send", "Send phrase", "Said on its own after a dictation: Return in that app; empty: off", Kind::Text).example("blitz send"),
+            f("wake", "scratch", "Take-back phrase", "Said on its own, a pause around it: takes the last dictated sentence back; empty: off", Kind::Text).example("blitz scratch, blitz delete"),
+            f("wake", "quiet_s", "Pause that ends it (s)", "Seconds without speech that end a dictation the wake phrase started; 1 to 30", Kind::Float).advanced(),
+            f("wake", "send_within_s", "Send within (s)", "How long after a dictation the send phrase works; 0 to 3600", Kind::Float).advanced(),
+        ],
+    },
+    Section {
         title: "Vocabulary",
         about: "Words the speech model gets wrong, and names the rewrite must not change.",
         fields: &[

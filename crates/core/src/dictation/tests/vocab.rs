@@ -1,4 +1,5 @@
-//! The vocabulary's written forms while typing, and the rewrite's hold.
+//! The vocabulary's written forms while typing, the rewrite's hold, and a
+//! spoken stop phrase taken off.
 
 use super::*;
 
@@ -66,4 +67,18 @@ fn a_rewrite_prompt_holds_batch_text_back_and_never_live() {
     assert!(!Opts::new(true, &cfg).hold, "live types as it goes");
     cfg.dictation.rewrite = "  ".into();
     assert!(!Opts::new(false, &cfg).hold, "blank is off");
+}
+
+#[test]
+fn a_stop_phrase_said_last_is_taken_off_the_screen_and_the_history() {
+    let e = env();
+    let o = Opts {
+        stop: Arc::new(Mutex::new(("in berlin".into(), false))),
+        ..opts(true)
+    };
+    let text = session(&e, &mut speech().0.recognizer(), speech().1, &o);
+    // "Hello my name is Anna. I live in Berlin." ended by saying "in Berlin"
+    assert_eq!(text, "Hello my name is Anna. I live");
+    assert_eq!(e.platform.screen(), text, "typed live, then taken back");
+    assert_eq!(e.store.history()[0].text, text);
 }

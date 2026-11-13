@@ -113,6 +113,11 @@ pub trait Platform: Send + Sync {
     /// dictation records (the wave under it), so it never logs. mac:
     /// Accessibility; Linux: None, as [`Platform::selection_bounds`].
     fn caret(&self, f: &Focus) -> Option<Rect>;
+    /// `f`'s focused text from its start to the caret; None while text is
+    /// selected or the app will not say: hands-free's take-back phrase
+    /// removes its last sentence. mac: Accessibility; Linux: None (it takes
+    /// back only what its last dictation typed).
+    fn text_before_caret(&self, f: &Focus) -> Option<String>;
     /// Where the mouse is, in [`Rect`]'s space: lightning aims there when
     /// the app will not say where its selection is. Linux: None (Wayland
     /// tells no client where the pointer is outside its own windows).
@@ -149,6 +154,10 @@ pub trait Platform: Send + Sync {
     /// Re-activate `f` as `paste_into` does and send its undo shortcut
     /// (⌘Z; Linux: `[linux] undo_keys`); false = `f` never came back.
     fn undo(&self, f: &Focus) -> Result<bool>;
+    /// Re-activate `f` as `paste_into` does and press Return: `[wake] send`
+    /// sends what was dictated there. False = `f` never came back. Linux:
+    /// where the focus is, as `undo`.
+    fn send(&self, f: &Focus) -> Result<bool>;
     /// Run the region screenshot `cmd` with `{path}` replaced by `out`,
     /// shell-quoted (the data dir has a space on mac); false = the user cancelled.
     fn capture(&self, cmd: &str, out: &Path) -> Result<bool>;

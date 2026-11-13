@@ -38,6 +38,8 @@ pub struct FakePlatform {
     pub undone_in: Mutex<Vec<Focus>>,
     /// Every app `refocus` brought back, in order.
     pub refocused: Mutex<Vec<Focus>>,
+    /// Every app `send` pressed Return in, in order.
+    pub sent_in: Mutex<Vec<Focus>>,
     /// Our own window is in front (the effect's overlay took the key
     /// focus): `focused_app` names no app, as macOS's leaves ours out.
     pub ours_in_front: AtomicBool,
@@ -126,6 +128,11 @@ impl Platform for FakePlatform {
         self.caret
     }
 
+    /// The whole fake screen: its caret is always at the end.
+    fn text_before_caret(&self, _f: &Focus) -> Option<String> {
+        Some(self.screen())
+    }
+
     fn mouse(&self) -> Option<(f64, f64)> {
         self.mouse
     }
@@ -171,6 +178,11 @@ impl Platform for FakePlatform {
         lock(&self.refocused).push(*f);
         self.ours_in_front.store(false, Ordering::SeqCst);
         true
+    }
+
+    fn send(&self, f: &Focus) -> Result<bool> {
+        lock(&self.sent_in).push(*f);
+        Ok(true)
     }
 
     fn undo(&self, f: &Focus) -> Result<bool> {

@@ -5,7 +5,7 @@
 use super::focus::{ax_app, ax_attr, ax_param, focused};
 use blitznir_core::platform::Rect;
 use objc2_application_services::{AXUIElement, AXValue, AXValueType};
-use objc2_core_foundation::{CFNumber, CFRange, CFRetained, CFType, CGRect};
+use objc2_core_foundation::{CFNumber, CFRange, CFRetained, CFString, CFType, CGRect};
 use std::ptr::NonNull;
 
 /// A caret is a few points wide at most and a line box lower than this; a
@@ -124,4 +124,25 @@ fn by_marker(el: &AXUIElement) -> Option<Rect> {
 pub fn line(pid: i32) -> Option<Rect> {
     let el = focused(&ax_app(pid)).ok()?;
     by_range(&el).or_else(|| by_marker(&el))
+}
+
+/// `Platform::text_before_caret`: the focused element's text up to its
+/// caret (AXSelectedTextRange counts UTF-16 units); None while text is
+/// selected, or the element will not say (web text in markers).
+pub fn text_before(pid: i32) -> Option<String> {
+    let el = focused(&ax_app(pid)).ok()?;
+    let text = ax_attr(&el, "AXValue")
+        .ok()?
+        .downcast::<CFString>()
+        .ok()?
+        .to_string();
+    let sel = range(&*ax_attr(&el, "AXSelectedTextRange").ok()?)?;
+    if sel.length != 0 {
+        return None;
+    }
+    let units: Vec<u16> = text
+        .encode_utf16()
+        .take(usize::try_from(sel.location).ok()?)
+        .collect();
+    String::from_utf16(&units).ok()
 }

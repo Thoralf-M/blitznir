@@ -79,6 +79,14 @@ pub struct Dictator {
     rec: Mutex<Option<Box<dyn Recognizer>>>,
     now: Mutex<Now>,
     notify: Notify,
+    /// When a session's live text last gained a word (`Opts::words`).
+    words: Arc<Mutex<Option<std::time::Instant>>>,
+    /// The stop phrase that ended the running session, if one did (`Opts::stop`).
+    said_stop: Arc<Mutex<(String, bool)>>,
+    /// The wake phrase as the transcript that caught it wrote it.
+    heard_head: Mutex<String>,
+    /// The running session's live text (`Opts::text`).
+    live: Arc<Mutex<String>>,
 }
 
 impl Dictator {
@@ -96,6 +104,10 @@ impl Dictator {
             cfg: Mutex::new(cfg),
             source,
             rec: Mutex::new(None),
+            words: Arc::default(),
+            said_stop: Arc::default(),
+            heard_head: Mutex::default(),
+            live: Arc::default(),
             now: Mutex::new(Now {
                 phase: Phase::Loading,
                 stop: None,
@@ -117,6 +129,50 @@ impl Dictator {
         lock(&self.now).phase
     }
 
+    /// The running session ends because `phrase`, the stop phrase, was
+    /// said: it is taken off the text (call before the press that stops it).
+    pub fn stopped_by(&self, phrase: &str, command: bool) {
+        *lock(&self.said_stop) = (phrase.to_string(), command);
+    }
+
+    /// Starts a live session from `feed` if none runs: checked and started
+    /// under one lock, so a hotkey press between them cannot be stopped
+    /// instead. False: one ran (or the model is not loaded).
+    /// `heard`: the wake phrase as its transcript wrote it, taken off too.
+    pub fn start_if_idle(self: &Arc<Self>, feed: mpsc::Receiver<Vec<f32>>, heard: &str) -> bool {
+        *lock(&self.heard_head) = heard.to_string();
+        self.step(true, Some(feed), true)
+    }
+
+    /// The running session's live text, as heard.
+    pub fn live_text(&self) -> String {
+        lock(&self.live).clone()
+    }
+
+    /// When the running session's live text last gained a word.
+    pub fn words_at(&self) -> Option<std::time::Instant> {
+        *lock(&self.words)
+    }
+
+    /// The loaded model's text for `pcm` while no dictation uses it; None:
+    /// one does, or none is loaded (hands-free's check of a wake phrase).
+    pub fn transcribe(&self, pcm: &[f32]) -> Option<String> {
+        if self.phase() != Phase::Idle {
+            return None;
+        }
+        // a session that just took the model must not be waited for
+        let mut rec = self.rec.try_lock().ok()?;
+        let tokens = rec.as_mut()?.transcribe(pcm).ok()?;
+        Some(
+            tokens
+                .iter()
+                .map(|t| t.text.as_str())
+                .collect::<String>()
+                .trim()
+                .to_string(),
+        )
+    }
+
     fn set(&self, phase: Phase, stop: Option<Arc<AtomicBool>>) {
         *lock(&self.now) = Now { phase, stop };
         (self.notify)(Note::Phase(phase));
@@ -124,9 +180,31 @@ impl Dictator {
 
     /// A live (`live`) or batch hotkey press.
     pub fn press(self: &Arc<Self>, live: bool) {
+        self.press_from(live, None);
+    }
+
+    /// As [`Dictator::press`]; a session it starts records from `feed`
+    /// (hands-free's listener) instead of opening the microphone.
+    pub fn press_from(self: &Arc<Self>, live: bool, feed: Option<mpsc::Receiver<Vec<f32>>>) {
+        self.step(live, feed, false);
+    }
+
+    /// A press; `start_only`: one that would stop a session does nothing.
+    /// True: a session started.
+    fn step(
+        self: &Arc<Self>,
+        live: bool,
+        feed: Option<mpsc::Receiver<Vec<f32>>>,
+        start_only: bool,
+    ) -> bool {
         let mut now = lock(&self.now);
         match dictation::step(now.phase, live) {
+            Step::Stop | Step::Ignore if start_only => false,
             Step::Start { live } => {
+                // before the note: hands-free reads them as soon as it hears of the start
+                lock(&self.words).take();
+                lock(&self.live).clear();
+                *lock(&self.said_stop) = Default::default();
                 let stop = Arc::new(AtomicBool::new(false));
                 now.phase = if live { Phase::Live } else { Phase::Batch };
                 now.stop = Some(stop.clone());
@@ -136,11 +214,13 @@ impl Dictator {
                 let me = self.clone();
                 let spawned = thread::Builder::new()
                     .name("dictation".into())
-                    .spawn(move || me.session(live, &stop));
+                    .spawn(move || me.session(live, &stop, feed));
                 if let Err(e) = spawned {
                     log::error!("cannot start the dictation thread: {e}");
                     self.set(Phase::Idle, None);
+                    return false;
                 }
+                true
             }
             Step::Stop => {
                 if let Some(stop) = &now.stop {
@@ -149,16 +229,25 @@ impl Dictator {
                 now.phase = Phase::Finishing;
                 drop(now);
                 (self.notify)(Note::Phase(Phase::Finishing));
+                false
             }
-            Step::Ignore => log::info!("hotkey ignored: {:?}", now.phase),
+            Step::Ignore => {
+                log::info!("hotkey ignored: {:?}", now.phase);
+                false
+            }
         }
     }
 
-    fn session(&self, live: bool, stop: &Arc<AtomicBool>) {
+    fn session(&self, live: bool, stop: &Arc<AtomicBool>, feed: Option<mpsc::Receiver<Vec<f32>>>) {
         let mode = if live { "live" } else { "batch" };
         log::info!("{mode} dictation started");
         let (tx, rx) = mpsc::channel();
-        let recorder = match audio::start(&self.source, tx, stop.clone()) {
+        let woken = feed.is_some();
+        let recording = match feed {
+            Some(feed) => audio::forward(feed, tx, stop.clone()),
+            None => audio::start(&self.source, tx, stop.clone()),
+        };
+        let recorder = match recording {
             Ok(recorder) => recorder,
             Err(e) => {
                 log::error!("cannot record: {e}");
@@ -168,7 +257,20 @@ impl Dictator {
             }
         };
         // as the recording began: the config may change before it ends
-        let opts = Opts::new(live, &lock(&self.cfg));
+        let mut opts = Opts::new(live, &lock(&self.cfg));
+        if woken {
+            let w = lock(&self.cfg).wake.clone();
+            // it heard the phrase's end, maybe as the transcript did
+            let heard = std::mem::take(&mut *lock(&self.heard_head));
+            opts.head = match heard.is_empty() {
+                true => w.wake,
+                false => format!("{}, {heard}", w.wake),
+            };
+            opts.tail = w.stop;
+        }
+        opts.words = self.words.clone();
+        opts.stop = self.said_stop.clone();
+        opts.text = self.live.clone();
         let text = match lock(&self.rec).as_mut() {
             Some(rec) => {
                 dictation::run(&rx, stop, rec.as_mut(), &*self.platform, &self.store, &opts)

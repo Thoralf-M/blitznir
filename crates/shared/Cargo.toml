@@ -26,6 +26,13 @@ parakeet-rs = "=0.3.8"
 reqwest = { workspace = true, features = ["blocking"] }
 # device rate → 16 kHz when the microphone cannot run at 16 kHz itself
 rubato = "5"
+# [wake]: the keyword spotter (k2-fsa's, Apache-2.0), linked statically; its
+# release ships as .tar.bz2 (bzip2 0.6: pure Rust), checked by SHA-256 (ring,
+# already here through rustls)
+sherpa-onnx = "=2.0.1"
+bzip2 = "0.6"
+tar = "0.4"
+ring = "0.17"
 
 # The minimum feature lists that compile and run (`libc` on app-kit is
 # required for processIdentifier).
