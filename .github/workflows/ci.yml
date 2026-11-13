@@ -11,7 +11,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-14, ubuntu-24.04]
+        # a fixed image, not macos-latest: a new macOS changes nothing unannounced
+        os: [macos-15, ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     # no debug info, no incremental: the Ubuntu runner's disk filled up with them
     env:
