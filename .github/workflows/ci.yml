@@ -30,17 +30,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends build-essential pkg-config \
             libssl-dev libgtk-3-dev libasound2-dev libxkbcommon-dev xkb-data
+      # dependencies only, pruned of stale builds before saving: a whole `target`
+      # restored and rebuilt per Cargo.lock grew 1.1 → 2.6 GB packed until unpacking
+      # it filled the Ubuntu runner's disk
+      - uses: Swatinem/rust-cache@v2
+      # the ONNX Runtime the `ort` crate downloads at build time
       - uses: actions/cache@v4
         with:
           path: |
-            ~/.cargo/registry
-            ~/.cargo/git
             ~/.cache/ort.pyke.io
             ~/Library/Caches/ort.pyke.io
-            target
-          # v2: never restore a target built with debug info
-          key: ${{ matrix.os }}-cargo-v2-${{ hashFiles('Cargo.lock') }}
-          restore-keys: ${{ matrix.os }}-cargo-v2-
+          key: ${{ matrix.os }}-ort-${{ hashFiles('Cargo.lock') }}
+          restore-keys: ${{ matrix.os }}-ort-
       # the UI tests' frames (UI_SHOTS), kept when a run fails, to see what it drew
       - run: mkdir -p "$UI_SHOTS" && scripts/check.sh
         env:
