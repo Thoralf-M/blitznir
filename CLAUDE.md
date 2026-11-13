@@ -76,6 +76,8 @@ frame (glows are images made once); ≤ 30 fps while something moves, 10 idle, n
 ## Adding a feature
 
 1. Can an existing path do it (config value, prompt, existing command)? Then do that.
+   Not simple? Search the web first for how it is already solved (a library, a standard
+   technique, how established tools do it) before hand-rolling heuristics.
 2. Logic goes in core with tests first (Fake platform/recognizer).
 3. New OS capability: add a Platform method + macos + linux + Fake in ONE change,
    or document in README why Linux lacks it.
