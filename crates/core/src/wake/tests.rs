@@ -161,7 +161,7 @@ fn the_wake_phrases_end_is_taken_off_the_start() {
         strip_head("Hey Blitz, write a short note.", w),
         "Write a short note."
     );
-    assert_eq!(strip_head("blitz write it", w), "write it");
+    assert_eq!(strip_head("blitz write it", w), "Write it");
     assert_eq!(strip_head("Blitz.", w), "");
     assert_eq!(
         strip_head("Write a short note.", w),

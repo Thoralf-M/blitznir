@@ -88,15 +88,17 @@ pub fn said_prefix(text: &str, setting: &str) -> Option<String> {
 
 pub fn strip_head(text: &str, wake: &str) -> String {
     let words: Vec<&str> = text.split_whitespace().collect();
-    let Some(k) = head_words(&words, wake) else {
-        return text.to_string();
+    // none found: the dictation began after it, mid-breath ("give me…")
+    let k = head_words(&words, wake).unwrap_or(0);
+    let rest = match k {
+        0 => text.to_string(),
+        _ => words[k..].join(" "),
     };
-    let rest = words[k..].join(" ");
     let rest = rest.trim_start_matches(|c: char| !c.is_alphanumeric());
-    let upper = text
-        .chars()
-        .find(|c| c.is_alphabetic())
-        .is_some_and(char::is_uppercase);
+    // it starts a sentence ("…blitz, give me" came out lowercase), unless
+    // its first word has capitals of its own ("iPhone")
+    let first = rest.split_whitespace().next().unwrap_or_default();
+    let upper = !first.chars().any(char::is_uppercase);
     let mut cs = rest.chars();
     match cs.next() {
         Some(c) if upper => c.to_uppercase().chain(cs).collect(),

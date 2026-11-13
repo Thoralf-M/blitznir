@@ -11,7 +11,7 @@ use blitznir_core::{
     Error, Result,
     config::{Config, Paths, SttModel},
     dictation::Phase,
-    platform::{Recognizer, fake::FakePlatform},
+    platform::{Platform, Recognizer, fake::FakePlatform},
     segmenter::{SAMPLE_RATE, SegConfig, Segmenter},
     store::Store,
     vocab::Vocab,
@@ -32,11 +32,12 @@ const USAGE: &str = "usage: blitznir            the tray app (hotkeys, dictation
          the hotkey's dictation, started and stopped from here: after a
          3 s countdown it types into the focused app. --wav replays a
          16 kHz file in real time instead of the microphone.
-       blitznir listen [--seconds N] [--wav FILE]
+       blitznir listen [--seconds N] [--wav FILE] [--type]
          hands-free, typing nothing: listens N s (default 60) for [wake]'s
          phrases, on whatever `enabled` says, dictates into a text kept in
          memory, and prints what it would have typed and each Return;
-         --wav hears a recording instead of the microphone.
+         --wav hears a recording instead of the microphone; --type types
+         into the focused app and presses its Return for real.
        blitznir --help     this text
 
 Every command but --help writes the default config.toml if there is none;
@@ -261,9 +262,13 @@ fn dictate(args: &[String]) -> Result<()> {
 /// Hands-free on a fake screen: the real microphone, ear and model, a
 /// throwaway history.
 fn listen(args: &[String]) -> Result<()> {
-    let (mut seconds, mut source) = (60.0_f32, Source::Mic);
+    let (mut seconds, mut source, mut typing) = (60.0_f32, Source::Mic, false);
     let mut it = args.iter();
     while let Some(flag) = it.next() {
+        if flag == "--type" {
+            typing = true;
+            continue;
+        }
         match (flag.as_str(), it.next()) {
             ("--seconds", Some(n)) => seconds = n.parse().map_err(|_| usage())?,
             // a recording instead of the microphone, in real time, then quiet
@@ -280,11 +285,16 @@ fn listen(args: &[String]) -> Result<()> {
     let tmp = std::env::temp_dir().join(format!("blitznir-listen-{}", std::process::id()));
     let store = Arc::new(Store::new(Paths::new(&tmp), cfg.dictation.history_max)?);
     let screen = Arc::new(FakePlatform::new());
+    // --type: into the focused app, Return and all (a demo's take)
+    let target: Arc<dyn Platform> = match typing {
+        true => platform::current(),
+        false => screen.clone(),
+    };
     let (tx, notes) = mpsc::channel();
     let send = move |n| drop(tx.send(n));
-    let d = Dictator::new(screen.clone(), store, cfg.clone(), Source::Mic, send);
+    let d = Dictator::new(target.clone(), store, cfg.clone(), Source::Mic, send);
     d.ready(Box::new(rec));
-    let hands = Hands::start(&paths, &cfg, screen.clone(), d, source, |m| {
+    let hands = Hands::start(&paths, &cfg, target, d, source, |m| {
         log::info!("flash: {m}")
     })?;
     let t0 = Instant::now();

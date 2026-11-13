@@ -161,3 +161,18 @@ fn the_wake_phrase_comes_off_as_the_dictation_wrote_it() {
         assert_eq!(strip_head(t, w), t);
     }
 }
+
+#[test]
+fn what_follows_the_wake_phrase_starts_a_sentence() {
+    use super::strip_head;
+    let w = "hey blitz";
+    assert_eq!(
+        strip_head("blitz, give me three ideas.", w),
+        "Give me three ideas."
+    );
+    assert_eq!(strip_head("Hey Blitz, iPhone notes.", w), "iPhone notes.");
+    assert_eq!(
+        strip_head("give me three ideas.", w),
+        "Give me three ideas."
+    );
+}
